@@ -1318,7 +1318,7 @@ window.runDiff = function(which) {
 
   // Pad so changed lines (emoji → emoji) are same width as unchanged (emoji)
   // "🚨 → ✅" is 6 chars wider than "✅", so pad unchanged with spaces
-  const ARROW_PAD = '         '; //  spaces to match " → 🚨" width
+  const ARROW_PAD = ' '; //  spaces to match " → 🚨" width
   function diffLine(key) {
     const oldLevel = oldCaps[key] ?? 0;
     const newLevel = state[key] ?? 0;
