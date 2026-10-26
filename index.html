@@ -641,7 +641,7 @@ function buildMessage(pairs, soloKeys = []) {
     if (aDisabled && bDisabled) return;
     const aLabel = aKey === '400/401' ? '400' : aKey;
     const bLabel = bKey === '400/401' ? '400' : bKey;
-    if (aDisabled) { lines.push(`                  ${bLabel}: ${em[state[bKey]]}`); return; }
+    if (aDisabled) { lines.push(`                        ${bLabel}: ${em[state[bKey]]}`); return; }
     if (bDisabled) { lines.push(`${aLabel}: ${em[state[aKey]]}`); return; }
     lines.push(`${aLabel}: ${em[state[aKey]]}          ${bLabel}: ${em[state[bKey]]}`);
   });
