@@ -277,6 +277,8 @@
       </div>
       <div style="display:flex;gap:10px;">
         <button class="action-btn btn-both" data-copy="missing" style="font-size:11px;padding:6px;">Copy Missing</button>
+        <button class="action-btn btn-both" data-copy="fixes" style="font-size:11px;padding:6px;">Copy Fixes</button>
+        <button class="action-btn btn-both" data-copy="all" style="font-size:11px;padding:6px;">Copy Missing + Fixes</button>
       </div>
     </div>
   </div>
@@ -598,25 +600,59 @@ function buildCopyText(which) {
   return keys.map(k => buildSectionText(SECTIONS[k])).filter(Boolean).join('\n\n');
 }
 
-// Only aisles with an empty slot, plus totals needed.
-// Full is Red/Blue/Red/Blue, so an empty slot 1 or 3 needs red, slot 2 or 4 needs blue.
-function buildMissingText() {
-  let red = 0, blue = 0;
+// What an aisle needs, by count only: every aisle should end up with 2 red and 2 blue.
+// Empty slots are filled first with whatever color is short. Whatever is still short
+// after that is "fixes": grays to replace, plus extras (3+ of one color) to swap out.
+function aisleNeeds(k) {
+  const st = toteState[k];
+  const r = st.filter(v => v === 1).length;
+  const b = st.filter(v => v === 2).length;
+  const g = st.filter(v => v === 3).length;
+  const e = st.filter(v => v === 0).length;
+  const shortR = Math.max(0, 2 - r);
+  const shortB = Math.max(0, 2 - b);
+  const missR = Math.min(e, shortR);
+  const missB = Math.min(e - missR, shortB);
+  return {
+    missR, missB,
+    fixR: shortR - missR, fixB: shortB - missB,
+    grays: g, extra: Math.max(0, r - 2) + Math.max(0, b - 2),
+  };
+}
+
+// mode = 'missing' | 'fixes' | 'all'
+function buildNeedsText(mode) {
+  let red = 0, blue = 0, empties = 0, grays = 0, extra = 0;
   const out = [];
   ['con', 'brg'].forEach(name => {
     const { pairs, solo } = SECTIONS[name];
+    // 100s first, then 200s (runs do all the 100s before the 200s)
+    const groups = [pairs.map(pr => pr[1]), [...pairs.map(pr => pr[0]), ...solo]];
+    groups.forEach(group => {
     const lines = [];
-    [...pairs.flat(), ...solo].forEach(k => {
+    group.forEach(k => {
       if (disabled[k]) return;
-      const st = toteState[k];
-      if (!st.includes(0)) return;
-      st.forEach((v, i) => { if (v === 0) { if (i % 2 === 0) red++; else blue++; } });
-      lines.push(`${capLabel(k)}: ${slotText(k)}`);
+      const n = aisleNeeds(k);
+      let needR = 0, needB = 0;
+      if (mode !== 'fixes') { needR += n.missR; needB += n.missB; }
+      if (mode !== 'missing') { needR += n.fixR; needB += n.fixB; }
+      if (!needR && !needB) return;
+      red += needR; blue += needB;
+      if (mode !== 'fixes') empties += n.missR + n.missB;
+      if (mode !== 'missing') { grays += n.grays; extra += n.extra; }
+      const want = [...Array(needR).fill('🟥'), ...Array(needB).fill('🟦')].join(' ');
+      lines.push(`${capLabel(k)}: ${slotText(k)}  → ${want}`);
     });
     if (lines.length) out.push(lines.join('\n'));
+    });
   });
-  if (!out.length) return 'No missing totes';
-  return out.join('\n\n') + `\n\nNeeded: ${red} 🟥  ${blue} 🟦  (${red + blue} total)`;
+  if (!out.length) {
+    return mode === 'missing' ? 'No missing totes' : mode === 'fixes' ? 'No fixes needed' : 'Nothing needed';
+  }
+  const parts = [];
+  if (mode !== 'fixes') parts.push(`${empties} empty`);
+  if (mode !== 'missing') parts.push(`${grays} ⬛`, `${extra} extra`);
+  return out.join('\n\n') + `\n\nNeeded: ${red} 🟥  ${blue} 🟦  (${red + blue} total — ${parts.join(', ')})`;
 }
 
 // Copy helper — tries the clipboard API, falls back to the older textarea method
@@ -640,7 +676,7 @@ function copyText(text) {
 }
 
 // ── History (Supabase, 7 days) ──
-const COPY_TAGS = { con: 'Copied CON', brg: 'Copied BRG', both: 'Copied Both', missing: 'Copied Missing' };
+const COPY_TAGS = { con: 'Copied CON', brg: 'Copied BRG', both: 'Copied Both', missing: 'Copied Missing', fixes: 'Copied Fixes', all: 'Copied Missing + Fixes' };
 const HISTORY_DAYS = 7;
 
 async function saveHistoryEntry(tag, message) {
@@ -656,7 +692,7 @@ document.querySelectorAll('[data-copy]').forEach(btn => {
   const original = btn.textContent;
   btn.addEventListener('click', () => {
     const which = btn.dataset.copy;
-    const text = which === 'missing' ? buildMissingText() : buildCopyText(which);
+    const text = ['missing', 'fixes', 'all'].includes(which) ? buildNeedsText(which) : buildCopyText(which);
     copyText(text).then(() => {
       saveHistoryEntry(COPY_TAGS[which], text);
       btn.classList.add('flash');
