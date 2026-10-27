@@ -211,6 +211,11 @@
   .cap-toggle-btn:hover { border-color: #555; color: var(--text); }
   .admin-active .cap-toggle-btn { display: flex; align-items: center; justify-content: center; }
   .cap-block.cap-disabled .cap-toggle-btn { color: var(--green); border-color: var(--green); }
+
+  .page-tabs { display: flex; border-bottom: 1px solid var(--border); background: #111; }
+  .page-tab { flex: 1; text-align: center; padding: 10px; font-size: 12px; color: var(--text-dim); text-decoration: none; border-bottom: 2px solid transparent; letter-spacing: .03em; transition: color 0.15s, background 0.15s; }
+  .page-tab:hover { color: var(--text); background: var(--surface); }
+  .page-tab.active { color: var(--text); border-bottom-color: var(--green); background: var(--surface); }
 </style>
 </head>
 <body>
@@ -221,6 +226,10 @@
 </div>
 
 <div class="page-wrap">
+  <nav class="page-tabs">
+    <a class="page-tab active" href="index.html">Amnesty</a>
+    <a class="page-tab" href="totes.html">Totes</a>
+  </nav>
   <header>
     <h1>Amnesty Tracker</h1>
     <div class="header-right">
