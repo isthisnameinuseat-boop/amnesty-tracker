@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Damage Tote Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --text-dim: #888;
+    --text-faint: #444;
+    --green: #22c55e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --gray: #9ca3af;
+    --yellow: #eab308;
+    --page-width: 700px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 0 0 120px;
+  }
+  .page-wrap { max-width: var(--page-width); margin: 0 auto; }
+
+  header {
+    padding: 16px 24px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  header h1 {
+    font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700;
+    letter-spacing: -0.5px; color: var(--text);
+  }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    background: none; border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 6px; width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; transition: border-color 0.15s, color 0.15s;
+  }
+  .icon-btn:hover { border-color: #555; color: var(--text); }
+
+  .instructions {
+    padding: 8px 24px; border-bottom: 1px solid var(--border);
+    background: #111; font-size: 11px; color: var(--text-dim);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .instr-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+  .section { padding: 0 24px; margin-top: 20px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .section-title {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim);
+  }
+
+  .pairs { display: flex; flex-direction: column; gap: 4px; }
+  .pair-row { display: grid; grid-template-columns: 1fr 48px 1fr; align-items: center; gap: 4px; }
+  .pair-divider { text-align: center; font-size: 10px; color: var(--text-faint); }
+  .cap-block {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pair-row.alt .cap-block { background: #202020; }
+  .cap-id { font-size: 13px; color: var(--text); min-width: 44px; flex-shrink: 0; letter-spacing: 0.03em; font-weight: 500; }
+  .bin-slots { display: flex; gap: 3px; flex: 1; }
+
+  .slot-btn {
+    flex: 1; height: 24px; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text-faint);
+    cursor: pointer; font-size: 10px; font-family: 'DM Mono', monospace;
+    font-weight: 500; letter-spacing: 0.03em;
+    transition: transform 0.1s, background 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1; padding: 0;
+    user-select: none; -webkit-user-select: none;
+  }
+  .slot-btn:hover { transform: scale(1.08); }
+  .slot-btn:active { transform: scale(0.93); }
+  .slot-btn.s-red  { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); box-shadow: 0 0 0 1px rgba(239,68,68,.25); color: var(--red); }
+  .slot-btn.s-blue { background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.4); box-shadow: 0 0 0 1px rgba(59,130,246,.25); color: var(--blue); }
+  .slot-btn.s-gray { background: rgba(156,163,175,.12); border-color: rgba(156,163,175,.4); box-shadow: 0 0 0 1px rgba(156,163,175,.25); color: var(--gray); }
+
+  .cap-block.cap-disabled { opacity: 0.35; }
+  .cap-block.cap-disabled .cap-id { text-decoration: line-through; color: var(--text-faint); }
+  .cap-block.cap-disabled .slot-btn { pointer-events: none; }
+
+  .cap-toggle-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-faint); font-size: 9px; padding: 0 4px; height: 18px; cursor: pointer; flex-shrink: 0; font-family: 'DM Mono', monospace; transition: border-color 0.15s, color 0.15s; display: none; }
+  .cap-toggle-btn:hover { border-color: #555; color: var(--text); }
+  .disable-mode .cap-toggle-btn { display: flex; align-items: center; justify-content: center; }
+  .cap-block.cap-disabled .cap-toggle-btn { color: var(--green); border-color: var(--green); }
+
+  .mode-toggle { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 12px; padding: 10px; border-radius: 6px; cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s; }
+  .mode-toggle:hover { border-color: #555; color: var(--text); }
+  .mode-toggle.on { background: #1a2e1f; border-color: var(--green); color: var(--green); }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 24px 0; }
+
+  .copy-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 10px 24px; display: flex; justify-content: center; z-index: 50;
+  }
+  .copy-bar-inner { display: flex; gap: 10px; width: 100%; max-width: var(--page-width); }
+  .action-btn {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 10px; border-radius: 6px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .action-btn:hover { background: #2e2e2e; }
+  .action-btn.btn-con { background: #162312; color: #86efac; }
+  .action-btn.btn-con:hover { background: #1a2a16; }
+  .action-btn.btn-con.flash { background: #1a2e1f; border-color: var(--green); color: var(--green); }
+  .action-btn.btn-brg { background: #231c09; color: #fde047; }
+  .action-btn.btn-brg:hover { background: #2a210b; }
+  .action-btn.btn-brg.flash { background: #2a2a10; border-color: #eab308; color: #eab308; }
+  .action-btn.btn-both { background: var(--surface2); color: var(--text); }
+  .action-btn.btn-both:hover { background: #2e2e2e; }
+  .action-btn.btn-both.flash { background: #242424; border-color: #555; color: var(--text); }
+
+  /* overlay base */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 400;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding-top: 40px; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s; overflow-y: auto;
+  }
+  .overlay.open { opacity: 1; pointer-events: all; }
+  .panel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; width: 100%; max-width: 500px; margin: 0 16px 40px;
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--surface);
+    border-radius: 10px 10px 0 0; z-index: 1;
+  }
+  .panel-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .panel-close { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+  .panel-close:hover { color: var(--text); }
+  .panel-body { padding: 20px; }
+
+  /* settings */
+  .settings-section-title { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+  .settings-hint { font-size: 11px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.5; }
+  .settings-divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  .admin-gate { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+  .admin-gate-title { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+  .admin-input-row { display: flex; gap: 8px; }
+  .admin-pw-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); outline: none; }
+  .admin-pw-input:focus { border-color: #555; }
+  .admin-pw-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 7px 14px; border-radius: 6px; cursor: pointer; }
+  .admin-pw-btn:hover { border-color: #555; }
+  .admin-unlocked-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--green); background: #1a2e1f; border: 1px solid var(--green); border-radius: 5px; padding: 4px 10px; }
+  .admin-locked { opacity: 0.4; pointer-events: none; }
+  .pw-error { font-size: 11px; color: var(--red); margin-top: 6px; display: none; }
+  .pw-error.show { display: block; }
+
+  .disable-list { display: flex; flex-direction: column; gap: 5px; }
+  .disable-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+  .disable-row-label { color: var(--text-dim); }
+  .disable-toggle { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 10px; border-radius: 4px; cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s; }
+  .disable-toggle.is-disabled { background: #2a0f0f; border-color: var(--red); color: var(--red); }
+
+  /* history */
+  .history-entry { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+  .history-entry-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); cursor: pointer; gap: 10px; }
+  .history-entry-header:hover { background: #2a2a2a; }
+  .history-entry-meta { display: flex; flex-direction: column; gap: 2px; }
+  .history-entry-time { font-size: 12px; color: var(--text); font-weight: 500; }
+  .history-entry-tag { font-size: 10px; color: var(--text-faint); letter-spacing: 0.06em; }
+  .history-chevron { font-size: 12px; color: var(--text-faint); transition: transform 0.2s; }
+  .history-entry.expanded .history-chevron { transform: rotate(180deg); }
+  .history-entry-body { display: none; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--bg); }
+  .history-entry.expanded .history-entry-body { display: block; }
+  .history-msg { font-size: 11px; color: var(--text-dim); white-space: pre; font-family: 'DM Mono', monospace; line-height: 1.8; overflow-x: auto; }
+  .history-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .history-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 12px; border-radius: 4px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .history-btn:hover { border-color: #555; color: var(--text); }
+  .history-btn.restore { border-color: var(--blue); color: var(--blue); }
+  .history-btn.restore:hover { background: rgba(59,130,246,.1); }
+  .history-empty { font-size: 13px; color: var(--text-faint); text-align: center; padding: 24px 0; }
+
+  .toast {
+    position: fixed; top: 16px; right: 16px;
+    background: var(--surface2); border: 1px solid var(--green); color: var(--green);
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    padding: 8px 16px; border-radius: 6px;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 500;
+  }
+  .toast.show { opacity: 1; }
+
+  /* sync status, last updated, loading */
+  .status-bar { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); transition: background 0.3s; }
+  .status-dot.synced { background: var(--green); }
+  .status-dot.syncing { background: var(--yellow); }
+  .status-dot.error { background: var(--red); }
+  .last-updated { font-size: 11px; color: var(--text-dim); padding: 6px 24px; border-bottom: 1px solid var(--border); background: #111; }
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 600; transition: opacity 0.4s; }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-text { font-size: 13px; color: var(--text-dim); }
+  .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* page tabs */
+  .page-tabs { display: flex; border-bottom: 1px solid var(--border); background: #111; }
+  .page-tab { flex: 1; text-align: center; padding: 10px; font-size: 12px; color: var(--text-dim); text-decoration: none; border-bottom: 2px solid transparent; letter-spacing: .03em; transition: color 0.15s, background 0.15s; }
+  .page-tab:hover { color: var(--text); background: var(--surface); }
+  .page-tab.active { color: var(--text); border-bottom-color: var(--green); background: var(--surface); }
+
+  .reset-btn { width: 100%; background: #2a0f0f; border: 1px solid #5a1d1d; color: #fca5a5; font-family: 'DM Mono', monospace; font-size: 12px; padding: 10px; border-radius: 6px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .reset-btn:hover { border-color: var(--red); color: var(--red); }
+
+  /* per-aisle last-changed time */
+  .cap-time { font-size: 10px; color: #5b9cf5; white-space: nowrap; flex-shrink: 0; width: 40px; text-align: right; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading latest state...</div>
+</div>
+
+<div class="page-wrap">
+
+  <nav class="page-tabs">
+    <a class="page-tab" href="index.html">Amnesty</a>
+    <a class="page-tab active" href="totes.html">Totes</a>
+  </nav>
+
+  <header>
+    <h1>Damage Tote Tracker</h1>
+    <div class="header-right">
+      <div class="status-bar">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connecting...</span>
+      </div>
+      <button class="icon-btn" id="btnHistory" title="History">🕐</button>
+      <button class="icon-btn" id="btnSettings" title="Settings">⚙</button>
+    </div>
+  </header>
+
+  <div class="last-updated"><span id="lastUpdated">Last updated: —</span></div>
+
+  <div class="instructions">
+    <div class="instr-dot"></div>
+    <span><strong>Click</strong> — cycle: Empty → Red → Blue → Gray → Empty &nbsp;·&nbsp; <strong>Right-click</strong> — empty</span>
+  </div>
+
+  <div id="con-section" class="section"></div>
+  <div class="divider"></div>
+  <div id="brg-section" class="section"></div>
+
+  <div class="copy-bar">
+    <div class="copy-bar-inner" style="flex-direction:column;gap:6px;">
+      <div style="display:flex;gap:10px;">
+        <button class="action-btn btn-con" data-copy="con">Copy CON</button>
+        <button class="action-btn btn-both" data-copy="both">Copy Both</button>
+        <button class="action-btn btn-brg" data-copy="brg">Copy BRG</button>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="action-btn btn-both" data-copy="missing" style="font-size:11px;padding:6px;">Copy Missing</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Settings overlay -->
+<div class="overlay" id="settingsOverlay">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Settings</div>
+      <button class="panel-close" id="settingsClose">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="settings-section-title">Disable Aisles</div>
+      <div class="settings-hint">Turn this on to show an OFF/ON button beside each aisle. Disabled aisles are grayed out and skipped in the copy output.</div>
+      <button class="mode-toggle" id="disableModeBtn">Aisle disabling: Off</button>
+      <div class="settings-divider"></div>
+      <div class="settings-section-title">Reset</div>
+      <div class="settings-hint">Sets every aisle to Red/Blue/Red/Blue. Changes it for everyone. Disabled aisles are left alone.</div>
+      <button class="reset-btn" id="resetFull">Reset all aisles to full</button>
+    </div>
+  </div>
+</div>
+
+<!-- History overlay -->
+<div class="overlay" id="historyOverlay">
+  <div class="panel" style="max-width:560px;">
+    <div class="panel-header">
+      <div class="panel-title">Copy History</div>
+      <button class="panel-close" id="historyClose">✕</button>
+    </div>
+    <div class="panel-body" id="historyBody">
+      <div class="history-empty">No history yet. History saves each time you copy.</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://afxfuznikqryqglaxmft.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_vhAJ1XhbzNVA2EfZhAX5tQ_jfA5YxR-';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COLORS = [
+  { cls: '',       label: '—',    emoji: '❌' },
+  { cls: 's-red',  label: 'Red',  emoji: '🟥' },
+  { cls: 's-blue', label: 'Blue', emoji: '🟦' },
+  { cls: 's-gray', label: 'Gray', emoji: '⬛' },
+];
+const FULL = [1, 2, 1, 2];
+
+// Warehouse layout
+const conPairs = [];
+for (let i = 152; i >= 127; i--) {
+  conPairs.push([i === 146 ? '400/401' : String(i + 100), String(i)]);
+}
+const brgPairs = [];
+for (let i = 112; i >= 100; i--) {
+  brgPairs.push([String(i + 103), String(i)]);
+}
+const brgSolo = ['202'];
+const ALL_KEYS = [...conPairs.flat(), ...brgPairs.flat(), ...brgSolo];
+
+const toteState = {};   // key -> [4 slot values]
+const toteTimes = {};   // key -> ISO time of last change
+const disabled = {};    // key -> true
+const blocks = {};      // key -> { block, slots[], timeEl, toggleBtn }
+ALL_KEYS.forEach(k => { toteState[k] = [0, 0, 0, 0]; });
+
+// ── Status ──
+function setStatus(type, text) {
+  document.getElementById('statusDot').className = 'status-dot ' + type;
+  document.getElementById('statusText').textContent = text;
+}
+function formatTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+function setLastUpdated(ts) {
+  document.getElementById('lastUpdated').textContent = 'Last updated: ' + formatTime(ts);
+}
+
+// Per-aisle time: blue <1h, yellow 1–4h, red 4–8h, hidden after 8h (same as amnesty)
+function formatCapTime(ts) {
+  if (!ts) return null;
+  const diff = Date.now() - new Date(ts).getTime();
+  if (diff > 8 * 3600000) return null;
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  let text;
+  if (mins < 1) text = 'now';
+  else if (mins < 60) text = `${mins}m`;
+  else text = `${hours}h ${mins % 60}m`;
+  let color;
+  if (diff < 3600000) color = '#5b9cf5';
+  else if (diff < 4 * 3600000) color = '#eab308';
+  else color = '#ef4444';
+  return { text, color };
+}
+
+// ── Rendering ──
+function renderKey(key) {
+  const b = blocks[key];
+  if (!b) return;
+  const st = toteState[key];
+  b.slots.forEach((btn, i) => {
+    const c = COLORS[st[i]] || COLORS[0];
+    btn.className = 'slot-btn' + (c.cls ? ' ' + c.cls : '');
+    btn.textContent = c.label;
+  });
+  const t = formatCapTime(toteTimes[key]);
+  b.timeEl.textContent = t ? t.text : '';
+  if (t) b.timeEl.style.color = t.color;
+  const off = !!disabled[key];
+  b.block.classList.toggle('cap-disabled', off);
+  b.slots.forEach(btn => btn.disabled = off);
+  b.toggleBtn.textContent = off ? 'ON' : 'OFF';
+  b.toggleBtn.title = off ? 'Enable aisle' : 'Disable aisle';
+}
+function renderAll() { ALL_KEYS.forEach(renderKey); }
+
+function setSlot(key, slotIdx, value) {
+  if (toteState[key][slotIdx] === value) return;
+  toteState[key][slotIdx] = value;
+  toteTimes[key] = new Date().toISOString();
+  renderKey(key);
+  scheduleSave(key);
+}
+
+function makeCapBlock(key) {
+  const block = document.createElement('div');
+  block.className = 'cap-block';
+  block.dataset.key = key;
+
+  const lbl = document.createElement('div');
+  lbl.className = 'cap-id';
+  lbl.textContent = key === '400/401' ? '400' : key;
+  block.appendChild(lbl);
+
+  const slotsWrap = document.createElement('div');
+  slotsWrap.className = 'bin-slots';
+  const slots = [];
+  for (let i = 0; i < 4; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'slot-btn';
+    btn.addEventListener('click', () => setSlot(key, i, (toteState[key][i] + 1) % COLORS.length));
+    // Right-click empties the slot (and skips the browser menu)
+    btn.addEventListener('contextmenu', e => { e.preventDefault(); setSlot(key, i, 0); });
+    slotsWrap.appendChild(btn);
+    slots.push(btn);
+  }
+  block.appendChild(slotsWrap);
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'cap-time';
+  block.appendChild(timeEl);
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'cap-toggle-btn';
+  toggleBtn.addEventListener('click', () => {
+    disabled[key] = !disabled[key];
+    renderKey(key);
+    saveSettings();
+  });
+  block.appendChild(toggleBtn);
+
+  blocks[key] = { block, slots, timeEl, toggleBtn };
+  return block;
+}
+
+function buildSection(containerId, title, pairs, soloKeys = []) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  const hdr = document.createElement('div');
+  hdr.className = 'section-header';
+  const t = document.createElement('div');
+  t.className = 'section-title';
+  t.textContent = title;
+  hdr.appendChild(t);
+  container.appendChild(hdr);
+
+  const pairsDiv = document.createElement('div');
+  pairsDiv.className = 'pairs';
+
+  pairs.forEach(([a, b], idx) => {
+    const row = document.createElement('div');
+    row.className = 'pair-row' + (idx % 2 === 1 ? ' alt' : '');
+    row.appendChild(makeCapBlock(a));
+    const div = document.createElement('div');
+    div.className = 'pair-divider';
+    div.textContent = '|';
+    row.appendChild(div);
+    row.appendChild(makeCapBlock(b));
+    pairsDiv.appendChild(row);
+  });
+
+  soloKeys.forEach(k => {
+    const row = document.createElement('div');
+    row.className = 'pair-row';
+    row.appendChild(makeCapBlock(k));
+    row.appendChild(document.createElement('div'));
+    row.appendChild(document.createElement('div'));
+    pairsDiv.appendChild(row);
+  });
+
+  container.appendChild(pairsDiv);
+}
+
+buildSection('con-section', 'Conveyable', conPairs);
+buildSection('brg-section', 'BRG', brgPairs, brgSolo);
+renderAll();
+
+// ── Saving & syncing state ──
+// Aisles changed here that haven't finished saving yet. Updates coming in from
+// other devices skip these aisles, so two people working different aisles at
+// the same time don't wipe out each other's changes.
+// key -> change counter, so a save that finishes doesn't clear a newer change
+const pendingKeys = new Map();
+function markPending(k) { pendingKeys.set(k, (pendingKeys.get(k) || 0) + 1); }
+let saveTimeout = null;
+
+function scheduleSave(key) {
+  if (key) markPending(key);
+  setStatus('syncing', 'Saving...');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    const sending = new Map(pendingKeys);
+    try {
+      const now = new Date().toISOString();
+      const { error } = await sb.from('tote_state').upsert({
+        id: 'state', totes: toteState, tote_times: toteTimes, updated_at: now,
+      });
+      if (error) throw error;
+      sending.forEach((n, k) => { if (pendingKeys.get(k) === n) pendingKeys.delete(k); });
+      setLastUpdated(now);
+      setStatus('synced', 'Saved');
+    } catch (e) {
+      console.error('Save failed', e);
+      setStatus('error', 'Save failed');
+    }
+    saveTimeout = null;
+  }, 800);
+}
+
+function applyRemoteState(data) {
+  if (!data) return;
+  if (data.totes) {
+    Object.keys(data.totes).forEach(k => {
+      if (!toteState[k] || pendingKeys.has(k)) return;
+      const v = data.totes[k];
+      if (Array.isArray(v) && v.length === 4) toteState[k] = v.map(n => Number(n) || 0);
+    });
+  }
+  if (data.tote_times) {
+    Object.keys(data.tote_times).forEach(k => {
+      if (pendingKeys.has(k)) return;
+      toteTimes[k] = data.tote_times[k];
+    });
+  }
+  if (data.updated_at) setLastUpdated(data.updated_at);
+  renderAll();
+}
+
+// ── Settings (disabled aisles) ──
+async function saveSettings() {
+  try {
+    const list = ALL_KEYS.filter(k => disabled[k]);
+    const { error } = await sb.from('tote_settings').upsert({ id: 'settings', data: { disabled: list } });
+    if (error) throw error;
+  } catch (e) {
+    console.error('Settings save failed', e);
+    showToast('Settings save failed');
+  }
+}
+
+function applyRemoteSettings(data) {
+  const list = (data && Array.isArray(data.disabled)) ? data.disabled : [];
+  ALL_KEYS.forEach(k => { disabled[k] = list.includes(k); });
+  renderAll();
+}
+
+// ── Copy text ──
+// Spaces placed before a 100s aisle when its 200s partner is disabled,
+// so it still lines up in the right column in Slack.
+const PAIR_PAD = ' '.repeat(39);
+
+const SECTIONS = {
+  con: { pairs: conPairs, solo: [] },
+  brg: { pairs: brgPairs, solo: brgSolo },
+};
+const slotText = k => (toteState[k] || [0,0,0,0]).map(i => COLORS[i].emoji).join(' ');
+const capLabel = k => k === '400/401' ? '400' : k;
+
+// One section's lines — no headers; if one side of a pair is disabled, the other side still prints
+function buildSectionText({ pairs, solo }) {
+  const lines = [];
+  pairs.forEach(([a, b]) => {
+    const aOff = !!disabled[a];
+    const bOff = !!disabled[b];
+    if (aOff && bOff) return;
+    if (aOff) { lines.push(`${PAIR_PAD}${capLabel(b)}: ${slotText(b)}`); return; }
+    if (bOff) { lines.push(`${capLabel(a)}: ${slotText(a)}`); return; }
+    lines.push(`${capLabel(a)}: ${slotText(a)}    ${capLabel(b)}: ${slotText(b)}`);
+  });
+  solo.filter(k => !disabled[k]).forEach(k => lines.push(`${capLabel(k)}: ${slotText(k)}`));
+  return lines.join('\n');
+}
+
+// which = 'con' | 'brg' | 'both'
+function buildCopyText(which) {
+  const keys = which === 'both' ? ['con', 'brg'] : [which];
+  return keys.map(k => buildSectionText(SECTIONS[k])).filter(Boolean).join('\n\n');
+}
+
+// Only aisles with an empty slot, plus totals needed.
+// Full is Red/Blue/Red/Blue, so an empty slot 1 or 3 needs red, slot 2 or 4 needs blue.
+function buildMissingText() {
+  let red = 0, blue = 0;
+  const out = [];
+  ['con', 'brg'].forEach(name => {
+    const { pairs, solo } = SECTIONS[name];
+    const lines = [];
+    [...pairs.flat(), ...solo].forEach(k => {
+      if (disabled[k]) return;
+      const st = toteState[k];
+      if (!st.includes(0)) return;
+      st.forEach((v, i) => { if (v === 0) { if (i % 2 === 0) red++; else blue++; } });
+      lines.push(`${capLabel(k)}: ${slotText(k)}`);
+    });
+    if (lines.length) out.push(lines.join('\n'));
+  });
+  if (!out.length) return 'No missing totes';
+  return out.join('\n\n') + `\n\nNeeded: ${red} 🟥  ${blue} 🟦  (${red + blue} total)`;
+}
+
+// Copy helper — tries the clipboard API, falls back to the older textarea method
+function copyText(text) {
+  const fallback = () => new Promise((resolve, reject) => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    ok ? resolve() : reject(new Error('copy failed'));
+  });
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(text).catch(fallback);
+  }
+  return fallback();
+}
+
+// ── History (Supabase, 7 days) ──
+const COPY_TAGS = { con: 'Copied CON', brg: 'Copied BRG', both: 'Copied Both', missing: 'Copied Missing' };
+const HISTORY_DAYS = 7;
+
+async function saveHistoryEntry(tag, message) {
+  try {
+    const { error } = await sb.from('tote_history').insert({
+      tag, message, totes: toteState, saved_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  } catch (e) { console.error('History save failed', e); }
+}
+
+document.querySelectorAll('[data-copy]').forEach(btn => {
+  const original = btn.textContent;
+  btn.addEventListener('click', () => {
+    const which = btn.dataset.copy;
+    const text = which === 'missing' ? buildMissingText() : buildCopyText(which);
+    copyText(text).then(() => {
+      saveHistoryEntry(COPY_TAGS[which], text);
+      btn.classList.add('flash');
+      btn.textContent = 'Copied!';
+      showToast('Copied to clipboard');
+      setTimeout(() => { btn.classList.remove('flash'); btn.textContent = original; }, 1500);
+    }).catch(() => showToast('Copy failed'));
+  });
+});
+
+// ── Reset to full ──
+document.getElementById('resetFull').addEventListener('click', () => {
+  if (!confirm('Reset all aisles to full (Red/Blue/Red/Blue)? This changes it for everyone. Disabled aisles are left alone.')) return;
+  const now = new Date().toISOString();
+  ALL_KEYS.forEach(k => {
+    if (disabled[k]) return;
+    if (toteState[k].every((v, i) => v === FULL[i])) return;
+    toteState[k] = [...FULL];
+    toteTimes[k] = now;
+    markPending(k);
+  });
+  renderAll();
+  scheduleSave();
+  document.getElementById('settingsOverlay').classList.remove('open');
+  showToast('Reset to full');
+});
+
+// ── Settings panel ──
+document.getElementById('btnSettings').addEventListener('click', () => {
+  document.getElementById('settingsOverlay').classList.add('open');
+});
+document.getElementById('settingsClose').addEventListener('click', () => {
+  document.getElementById('settingsOverlay').classList.remove('open');
+});
+document.getElementById('settingsOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settingsOverlay'))
+    document.getElementById('settingsOverlay').classList.remove('open');
+});
+
+// Aisle disabling mode — shows the OFF/ON button on each aisle (this device only)
+document.getElementById('disableModeBtn').addEventListener('click', function() {
+  const on = document.body.classList.toggle('disable-mode');
+  this.classList.toggle('on', on);
+  this.textContent = 'Aisle disabling: ' + (on ? 'On' : 'Off');
+});
+
+// ── History panel ──
+document.getElementById('btnHistory').addEventListener('click', () => {
+  document.getElementById('historyOverlay').classList.add('open');
+  renderHistory();
+});
+document.getElementById('historyClose').addEventListener('click', () => {
+  document.getElementById('historyOverlay').classList.remove('open');
+});
+document.getElementById('historyOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('historyOverlay'))
+    document.getElementById('historyOverlay').classList.remove('open');
+});
+
+async function renderHistory() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '<div class="history-empty">Loading...</div>';
+  const cutoff = new Date(Date.now() - HISTORY_DAYS * 86400000).toISOString();
+
+  // Clear out entries older than 7 days (ignore errors)
+  sb.from('tote_history').delete().lt('saved_at', cutoff).then(() => {}, () => {});
+
+  let rows = [];
+  try {
+    const { data, error } = await sb.from('tote_history').select('*')
+      .gte('saved_at', cutoff).order('saved_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    rows = data || [];
+  } catch (e) {
+    console.error('History load failed', e);
+    body.innerHTML = '<div class="history-empty">Could not load history.</div>';
+    return;
+  }
+
+  if (!rows.length) {
+    body.innerHTML = '<div class="history-empty">No history yet. History saves each time you copy.</div>';
+    return;
+  }
+  body.innerHTML = '';
+  rows.forEach(entry => {
+    const d = new Date(entry.saved_at);
+    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+      + '  ' + d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const el = document.createElement('div');
+    el.className = 'history-entry';
+    el.innerHTML = `
+      <div class="history-entry-header">
+        <div class="history-entry-meta">
+          <div class="history-entry-time"></div>
+          <div class="history-entry-tag"></div>
+        </div>
+        <div class="history-chevron">▾</div>
+      </div>
+      <div class="history-entry-body">
+        <div class="history-msg"></div>
+        <div class="history-actions">
+          <button class="history-btn restore">↩ Restore this state</button>
+          <button class="history-btn copy-hist">Copy text</button>
+        </div>
+      </div>
+    `;
+    el.querySelector('.history-entry-time').textContent = time;
+    el.querySelector('.history-entry-tag').textContent = entry.tag || 'Copy';
+    el.querySelector('.history-msg').textContent = entry.message || '';
+    el.querySelector('.history-entry-header').addEventListener('click', () => el.classList.toggle('expanded'));
+    el.querySelector('.restore').addEventListener('click', () => {
+      if (!entry.totes) return;
+      if (!confirm('Restore tote state from this copy? This changes it for everyone.')) return;
+      const now = new Date().toISOString();
+      Object.keys(entry.totes).forEach(k => {
+        const v = entry.totes[k];
+        if (!toteState[k] || !Array.isArray(v) || v.length !== 4) return;
+        if (toteState[k].every((x, i) => x === v[i])) return;
+        toteState[k] = v.map(n => Number(n) || 0);
+        toteTimes[k] = now;
+        markPending(k);
+      });
+      renderAll();
+      scheduleSave();
+      document.getElementById('historyOverlay').classList.remove('open');
+      showToast('State restored');
+    });
+    el.querySelector('.copy-hist').addEventListener('click', () => {
+      copyText(entry.message || '').then(() => showToast('Copied!')).catch(() => showToast('Copy failed'));
+    });
+    body.appendChild(el);
+  });
+}
+
+// Toast
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ── Startup ──
+async function init() {
+  try {
+    const { data, error } = await sb.from('tote_settings').select('data').eq('id', 'settings').single();
+    if (error && error.code !== 'PGRST116') throw error;
+    applyRemoteSettings(data && data.data);
+  } catch (e) { console.error('Settings load failed', e); }
+
+  try {
+    const { data, error } = await sb.from('tote_state').select('*').eq('id', 'state').single();
+    if (error && error.code !== 'PGRST116') throw error;
+    applyRemoteState(data);
+    setStatus('synced', 'Connected');
+  } catch (e) {
+    console.error(e);
+    setStatus('error', 'Could not load');
+  }
+
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('hidden');
+  setTimeout(() => overlay.remove(), 500);
+
+  // Refresh the per-aisle times every minute
+  setInterval(renderAll, 60000);
+
+  sb.channel('tote_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tote_state', filter: 'id=eq.state' }, payload => {
+      if (payload.new) {
+        applyRemoteState(payload.new);
+        if (!saveTimeout) setStatus('synced', 'Up to date');
+      }
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tote_settings', filter: 'id=eq.settings' }, payload => {
+      if (payload.new) applyRemoteSettings(payload.new.data);
+    })
+    .subscribe();
+}
+
+init();
+</script>
+</body>
+</html>
