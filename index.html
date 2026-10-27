@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Amnesty Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@600;700&display=swap');
+
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --text: #f0f0f0;
+    --text-dim: #888;
+    --text-faint: #444;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --orange: #f97316;
+    --red: #ef4444;
+    --page-width: 700px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; padding: 0 0 110px; }
+  .page-wrap { max-width: var(--page-width); margin: 0 auto; }
+
+  header { padding: 16px 24px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  header h1 { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+
+  .layout-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .layout-toggle-btn { background: none; border: none; color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 12px; cursor: pointer; transition: background 0.15s, color 0.15s; white-space: nowrap; }
+  .layout-toggle-btn.active { background: var(--surface2); color: var(--text); }
+  .layout-toggle-btn:hover:not(.active) { background: #1e1e1e; }
+
+  .status-bar { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); transition: background 0.3s; }
+  .status-dot.synced { background: var(--green); }
+  .status-dot.syncing { background: var(--yellow); }
+  .status-dot.error { background: var(--red); }
+
+  .settings-icon-btn { background: none; border: 1px solid var(--border); color: var(--text-dim); border-radius: 6px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: border-color 0.15s, color 0.15s; }
+  .settings-icon-btn:hover { border-color: #555; color: var(--text); }
+
+  .last-updated { font-size: 11px; color: var(--text-dim); padding: 6px 24px; border-bottom: 1px solid var(--border); background: #111; display: flex; justify-content: space-between; align-items: center; }
+  .active-layout-label { font-size: 11px; color: var(--text-faint); }
+
+  .legend { display: flex; gap: 6px; padding: 10px 24px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .section { padding: 0 24px; margin-top: 20px; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .section-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+
+  .pairs { display: flex; flex-direction: column; gap: 4px; }
+  .pair-row { display: grid; grid-template-columns: 1fr 48px 1fr; align-items: center; gap: 4px; }
+  .pair-divider { text-align: center; font-size: 10px; color: var(--text-faint); }
+  .cap-block { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; display: flex; align-items: center; gap: 6px; }
+  .cap-id { font-size: 13px; color: var(--text); min-width: 44px; flex-shrink: 0; letter-spacing: 0.03em; font-weight: 500; }
+  .pair-row.alt .cap-block { background: #202020; }
+  .solo-row { display: grid; grid-template-columns: 1fr 48px 1fr; align-items: center; gap: 4px; }
+
+  .btn-group { display: flex; gap: 3px; flex: 1; }
+  .level-btn { flex: 1; height: 24px; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; font-size: 10px; font-family: 'DM Mono', monospace; font-weight: 500; letter-spacing: 0.03em; background: var(--surface2); color: var(--text-dim); transition: transform 0.1s, background 0.1s; display: flex; align-items: center; justify-content: center; line-height: 1; padding: 0; }
+  .level-btn:hover { transform: scale(1.1); }
+  .level-btn:active { transform: scale(0.95); }
+  .level-btn.active-0 { background: #1a1a1a; border-color: #f0f0f0; box-shadow: 0 0 0 1px #f0f0f0; color: #f0f0f0; }
+  .level-btn.active-1 { background: #1a2e1f; border-color: var(--green); box-shadow: 0 0 0 1px var(--green); color: var(--green); }
+  .level-btn.active-2 { background: #2a2a10; border-color: var(--yellow); box-shadow: 0 0 0 1px var(--yellow); color: var(--yellow); }
+  .level-btn.active-3 { background: #2a1a0a; border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange); color: var(--orange); }
+  .level-btn.active-4 { background: #2a0f0f; border-color: var(--red); box-shadow: 0 0 0 1px var(--red); color: var(--red); }
+  .level-btn.active-5 { background: #1a1a2e; border-color: #818cf8; box-shadow: 0 0 0 1px #818cf8; color: #818cf8; }
+  .level-btn.active-6 { background: #2a1a2a; border-color: #c084fc; box-shadow: 0 0 0 1px #c084fc; color: #c084fc; }
+
+  .copy-all-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 10px 24px; display: flex; justify-content: center; z-index: 50; }
+  .copy-all-inner { display: flex; gap: 10px; width: 100%; max-width: var(--page-width); }
+  .copy-all-btn { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; letter-spacing: 0.03em; }
+  .copy-all-btn:hover { background: #2e2e2e; }
+  .copy-all-btn.btn-con { background: #162312; color: #86efac; }
+  .copy-all-btn.btn-con:hover { background: #1a2a16; }
+  .copy-all-btn.btn-con.flash { background: #1a2e1f; border-color: var(--green); color: var(--green); }
+  .copy-all-btn.btn-brg { background: #231c09; color: #fde047; }
+  .copy-all-btn.btn-brg:hover { background: #2a210b; }
+  .copy-all-btn.btn-brg.flash { background: #2a2a10; border-color: var(--yellow); color: var(--yellow); }
+  .copy-all-btn.btn-both { background: var(--surface2); color: var(--text); }
+  .copy-all-btn.btn-both:hover { background: #2e2e2e; }
+  .copy-all-btn.btn-both.flash { background: #242424; border-color: #555; color: var(--text); }
+  .cap-time { font-size: 11px; color: #5b9cf5; white-space: nowrap; flex-shrink: 0; width: 72px; text-align: right; }
+
+  .settings-page-btn-wrap { padding: 20px 24px 0; }
+  .settings-page-btn { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 12px; padding: 10px; border-radius: 6px; cursor: pointer; transition: background 0.15s, color 0.15s; letter-spacing: 0.03em; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .settings-page-btn:hover { background: var(--surface2); color: var(--text); }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 24px 0; }
+
+  .toast { position: fixed; top: 16px; right: 16px; background: var(--surface2); border: 1px solid var(--green); color: var(--green); font-family: 'DM Mono', monospace; font-size: 12px; padding: 8px 16px; border-radius: 6px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 300; }
+  .toast.show { opacity: 1; }
+
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; z-index: 200; transition: opacity 0.4s; }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-text { font-size: 13px; color: var(--text-dim); }
+  .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Settings overlay */
+  .settings-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 400; display: flex; align-items: flex-start; justify-content: center; padding-top: 40px; opacity: 0; pointer-events: none; transition: opacity 0.2s; overflow-y: auto; }
+  .settings-overlay.open { opacity: 1; pointer-events: all; }
+  .settings-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 500px; margin: 0 16px 40px; }
+  .settings-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); border-radius: 10px 10px 0 0; z-index: 1; }
+  .settings-panel-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .settings-close { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+  .settings-close:hover { color: var(--text); }
+  .settings-body { padding: 20px; }
+
+  .settings-tab-bar { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 20px; }
+  .settings-tab { flex: 1; background: none; border: none; color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+  .settings-tab.active { background: var(--surface2); color: var(--text); }
+  .settings-tab:hover:not(.active) { background: #1e1e1e; }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .settings-section-title { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 12px; }
+  .settings-hint { font-size: 11px; color: var(--text-faint); margin-bottom: 14px; line-height: 1.5; }
+
+  .level-count-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .level-count-row label { font-size: 12px; color: var(--text-dim); }
+  .level-count-btns { display: flex; gap: 6px; }
+  .count-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 12px; padding: 5px 12px; border-radius: 5px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .count-btn.active { border-color: var(--green); color: var(--green); }
+
+  .level-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .level-num { font-size: 11px; color: var(--text-dim); min-width: 16px; }
+  .emoji-trigger { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 18px; cursor: pointer; min-width: 44px; text-align: center; transition: border-color 0.15s; }
+  .emoji-trigger:hover { border-color: #555; }
+  .level-label-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); outline: none; }
+  .level-label-input:focus { border-color: #555; }
+
+  .emoji-picker-wrap { margin-top: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; display: none; max-height: 220px; overflow-y: auto; }
+  .emoji-picker-wrap.open { display: block; }
+  .emoji-search { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); outline: none; margin-bottom: 10px; }
+  .emoji-category { margin-bottom: 10px; }
+  .emoji-cat-title { font-size: 10px; color: var(--text-faint); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+  .emoji-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .emoji-opt { font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; border: 1px solid transparent; transition: border-color 0.1s, background 0.1s; }
+  .emoji-opt:hover { background: var(--surface2); border-color: var(--border); }
+
+  .settings-divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  .width-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .width-opt-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 6px 14px; border-radius: 5px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .width-opt-btn:hover { border-color: #555; color: var(--text); }
+  .width-opt-btn.active { border-color: var(--green); color: var(--green); }
+
+  .admin-gate { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .admin-gate-title { font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+  .admin-input-row { display: flex; gap: 8px; }
+  .admin-pw-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); outline: none; }
+  .admin-pw-input:focus { border-color: #555; }
+  .admin-pw-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 7px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .admin-pw-btn:hover { border-color: #555; }
+  .admin-unlocked-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--green); background: #1a2e1f; border: 1px solid var(--green); border-radius: 5px; padding: 4px 10px; }
+  .admin-locked { opacity: 0.4; pointer-events: none; }
+
+  .save-btn { width: 100%; background: var(--surface2); border: 1px solid var(--green); color: var(--green); font-family: 'DM Mono', monospace; font-size: 13px; padding: 12px; border-radius: 6px; cursor: pointer; margin-top: 16px; transition: background 0.15s; letter-spacing: 0.03em; }
+  .save-btn:hover { background: #1a2e1f; }
+  .save-btn-personal { border-color: var(--border); color: var(--text-dim); }
+  .save-btn-personal:hover { background: #2e2e2e; border-color: #555; color: var(--text); }
+
+  .pw-error { font-size: 11px; color: var(--red); margin-top: 6px; display: none; }
+  .pw-error.show { display: block; }
+
+  /* History overlay */
+  .history-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 400; display: flex; align-items: flex-start; justify-content: center; padding-top: 40px; opacity: 0; pointer-events: none; transition: opacity 0.2s; overflow-y: auto; }
+  .history-overlay.open { opacity: 1; pointer-events: all; }
+  .history-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 560px; margin: 0 16px 40px; }
+  .history-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); border-radius: 10px 10px 0 0; z-index: 1; }
+  .history-panel-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .history-close { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+  .history-close:hover { color: var(--text); }
+  .history-body { padding: 16px 20px; }
+  .history-empty { font-size: 13px; color: var(--text-faint); text-align: center; padding: 24px 0; }
+  .history-entry { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .history-entry-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface2); cursor: pointer; gap: 10px; }
+  .history-entry-header:hover { background: #2a2a2a; }
+  .history-entry-meta { display: flex; flex-direction: column; gap: 2px; }
+  .history-entry-time { font-size: 12px; color: var(--text); font-weight: 500; }
+  .history-entry-tag { font-size: 10px; color: var(--text-faint); letter-spacing: 0.06em; }
+  .history-entry-tag.tag-auto { color: #818cf8; }
+  .history-entry-tag.tag-con { color: var(--green); }
+  .history-entry-tag.tag-brg { color: var(--yellow); }
+  .history-entry-tag.tag-both { color: var(--orange); }
+  .history-chevron { font-size: 12px; color: var(--text-faint); transition: transform 0.2s; }
+  .history-entry.expanded .history-chevron { transform: rotate(180deg); }
+  .history-entry-body { display: none; padding: 12px 14px; border-top: 1px solid var(--border); background: var(--bg); }
+  .history-entry.expanded .history-entry-body { display: block; }
+  .history-msg { font-size: 11px; color: var(--text-dim); white-space: pre; font-family: 'DM Mono', monospace; line-height: 1.8; overflow-x: auto; }
+  .history-copy-btn { margin-top: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 12px; border-radius: 4px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .history-copy-btn:hover { border-color: #555; color: var(--text); }
+  .history-load-more { width: 100%; background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 8px; border-radius: 6px; cursor: pointer; margin-top: 4px; transition: background 0.15s; }
+  .history-load-more:hover { background: var(--surface2); }
+
+
+  /* Disabled cap styles */
+  .cap-block.cap-disabled { opacity: 0.35; }
+  .cap-block.cap-disabled .cap-id { text-decoration: line-through; color: var(--text-faint); }
+  .cap-toggle-btn { background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text-faint); font-size: 9px; padding: 0 4px; height: 18px; cursor: pointer; flex-shrink: 0; font-family: 'DM Mono', monospace; transition: border-color 0.15s, color 0.15s; display: none; }
+  .cap-toggle-btn:hover { border-color: #555; color: var(--text); }
+  .admin-active .cap-toggle-btn { display: flex; align-items: center; justify-content: center; }
+  .cap-block.cap-disabled .cap-toggle-btn { color: var(--green); border-color: var(--green); }
+
+  .page-tabs { display: flex; border-bottom: 1px solid var(--border); background: #111; }
+  .page-tab { flex: 1; text-align: center; padding: 10px; font-size: 12px; color: var(--text-dim); text-decoration: none; border-bottom: 2px solid transparent; letter-spacing: .03em; transition: color 0.15s, background 0.15s; }
+  .page-tab:hover { color: var(--text); background: var(--surface); }
+  .page-tab.active { color: var(--text); border-bottom-color: var(--green); background: var(--surface); }
+
+  /* Day log: day / period bar */
+  .shift-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 24px; border-bottom: 1px solid var(--border); background: #131313; }
+  .shift-info { font-size: 12px; color: var(--text); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .shift-info.stale #shiftDay { color: var(--yellow); }
+  .shift-pill { font-size: 11px; color: #818cf8; background: #1a1a2e; border: 1px solid #3b3b6b; border-radius: 4px; padding: 2px 8px; }
+  .shift-since { font-size: 11px; color: var(--text-dim); }
+  .shift-actions { display: flex; gap: 6px; }
+  .shift-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+  .shift-btn:hover { border-color: #555; color: var(--text); }
+  .shift-btn.log { color: #818cf8; border-color: #3b3b6b; }
+
+  /* Day log: faded outline on the level it was last moved from */
+  .level-btn.ghost-0 { border: 1px dashed rgba(240,240,240,.45); }
+  .level-btn.ghost-1 { border: 1px dashed rgba(34,197,94,.5); }
+  .level-btn.ghost-2 { border: 1px dashed rgba(234,179,8,.5); }
+  .level-btn.ghost-3 { border: 1px dashed rgba(249,115,22,.5); }
+  .level-btn.ghost-4 { border: 1px dashed rgba(239,68,68,.5); }
+  .level-btn.ghost-5 { border: 1px dashed rgba(129,140,248,.5); }
+  .level-btn.ghost-6 { border: 1px dashed rgba(192,132,252,.5); }
+
+  /* Day log panel */
+  .dl-section-label { font-size: 10px; color: var(--text-faint); letter-spacing: .1em; text-transform: uppercase; margin: 14px 0 8px; }
+  .history-body > .dl-section-label:first-child { margin-top: 0; }
+  .dl-who { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+  .dl-who-btn { flex: 1; background: none; border: none; color: var(--text-dim); font-family: 'DM Mono', monospace; font-size: 11px; padding: 7px; cursor: pointer; }
+  .dl-who-btn.active { background: var(--surface2); color: var(--text); }
+  .dl-hint { font-size: 10px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.5; }
+  .dl-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+  .dl-card-head { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; background: var(--surface2); gap: 8px; }
+  .dl-card-name { font-size: 12px; font-weight: 500; }
+  .dl-card-time { font-size: 10px; color: var(--text-faint); }
+  .dl-card-count { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+  .dl-msg { font-size: 11px; color: var(--text-dim); white-space: pre; line-height: 1.8; padding: 10px 14px; background: var(--bg); overflow-x: auto; font-family: 'DM Mono', monospace; }
+  .dl-empty { font-size: 11px; color: var(--text-faint); padding: 10px 14px; background: var(--bg); }
+  .dl-up-head { font-size: 10px; color: var(--text-faint); letter-spacing: .06em; padding: 8px 14px 0; background: var(--bg); border-top: 1px dashed var(--border); }
+  .dl-msg.dl-up { opacity: .45; padding-top: 4px; }
+  .dl-sub-head { font-size: 10px; color: var(--text-faint); letter-spacing: .08em; text-transform: uppercase; padding: 8px 14px 0; background: var(--bg); }
+  .dl-card.dl-day { border-color: #3b3b6b; }
+  .dl-card.dl-day .dl-card-head { background: #1a1a2e; }
+  .dl-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .dl-btn { flex: 1; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 9px; border-radius: 6px; cursor: pointer; }
+  .dl-btn:hover { border-color: #555; }
+  .dl-btn.primary { color: #818cf8; border-color: #3b3b6b; background: #1a1a2e; }
+  .history-entry-tag.tag-log { color: #c084fc; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading latest state...</div>
+</div>
+
+<div class="page-wrap">
+  <nav class="page-tabs">
+    <a class="page-tab active" href="index.html">Amnesty</a>
+    <a class="page-tab" href="totes.html">Totes</a>
+  </nav>
+  <header>
+    <h1>Amnesty Tracker</h1>
+    <div class="header-right">
+      <div class="layout-toggle">
+        <button class="layout-toggle-btn active" id="btnDefault" onclick="switchLayout('default')">Default</button>
+        <button class="layout-toggle-btn" id="btnAlt" onclick="switchLayout('alt')">Alternative</button>
+      </div>
+      <div class="status-bar">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connecting...</span>
+      </div>
+      <button class="settings-icon-btn" onclick="openHistory()" title="History">🕐</button>
+      <button class="settings-icon-btn" onclick="openImport()" title="Import state">📋</button>
+      <button class="settings-icon-btn" onclick="openSettings()" title="Settings">⚙</button>
+    </div>
+  </header>
+
+  <div class="last-updated">
+    <span id="lastUpdated">Last updated: —</span>
+    <span class="active-layout-label" id="activeLayoutLabel">Default layout</span>
+  </div>
+
+  <div class="shift-bar">
+    <div class="shift-info" id="shiftInfo">
+      <span id="shiftDay">—</span>
+      <span class="shift-pill" id="shiftPeriod">Period 1</span>
+      <span class="shift-since" id="shiftSince"></span>
+    </div>
+    <div class="shift-actions">
+      <button class="shift-btn log" onclick="openDayLog()">📋 Day Log</button>
+      <button class="shift-btn" onclick="newPeriod()">New Period</button>
+      <button class="shift-btn" onclick="newDay()">New Day</button>
+    </div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <div id="con-section" class="section"></div>
+  <div class="divider"></div>
+  <div id="bulk-section" class="section"></div>
+  <div class="divider"></div>
+  <div id="brg-section" class="section"></div>
+
+  <div class="settings-page-btn-wrap" style="display:flex;gap:10px;">
+    <button class="settings-page-btn" onclick="openDayLog()">📋 Day Log</button>
+    <button class="settings-page-btn" onclick="openHistory()">🕐 History</button>
+    <button class="settings-page-btn" onclick="openImport()">📋 Import</button>
+    <button class="settings-page-btn" onclick="openSettings()">⚙ Settings</button>
+  </div>
+</div>
+
+<div class="copy-all-bar">
+  <div class="copy-all-inner" style="flex-direction:column;gap:6px;">
+    <div style="display:flex;gap:10px;">
+      <button class="copy-all-btn btn-con" onclick="copySection('con',this)">Copy CON</button>
+      <button class="copy-all-btn btn-both" onclick="copySection('all',this)">Copy Both</button>
+      <button class="copy-all-btn btn-brg" onclick="copySection('brg',this)">Copy BRG</button>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="copy-all-btn btn-con" style="font-size:10px;padding:5px;" onclick="copySection('con200',this)">CON 200s</button>
+      <button class="copy-all-btn btn-con" style="font-size:10px;padding:5px;" onclick="copySection('con100',this)">CON 100s</button>
+      <button class="copy-all-btn btn-brg" style="font-size:10px;padding:5px;" onclick="copySection('brg200',this)">BRG 200s</button>
+      <button class="copy-all-btn btn-brg" style="font-size:10px;padding:5px;" onclick="copySection('brg100',this)">BRG 100s</button>
+    </div>
+  </div>
+</div>
+
+<!-- History overlay -->
+<div class="history-overlay" id="historyOverlay" onclick="historyOverlayClick(event)">
+  <div class="history-panel">
+    <div class="history-panel-header">
+      <div class="history-panel-title">Shift History</div>
+      <button class="history-close" onclick="closeHistory()">✕</button>
+    </div>
+    <div class="history-body" id="historyBody">
+      <div class="history-empty">Loading history...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Day log overlay -->
+<div class="history-overlay" id="dayLogOverlay" onclick="dayLogOverlayClick(event)">
+  <div class="history-panel">
+    <div class="history-panel-header">
+      <div class="history-panel-title">Day Log — <span id="dlDayTitle"></span></div>
+      <button class="history-close" onclick="closeDayLog()">✕</button>
+    </div>
+    <div class="history-body">
+      <div class="dl-section-label">Periods</div>
+      <div class="dl-who">
+        <button class="dl-who-btn active" data-who="mine" onclick="setDayLogWho('mine')">Mine</button>
+        <button class="dl-who-btn" data-who="all" onclick="setDayLogWho('all')">Everyone</button>
+      </div>
+      <div class="dl-hint" id="dlHint"></div>
+      <div id="dlPeriods"></div>
+      <div class="dl-section-label">Day</div>
+      <div id="dlDay"></div>
+      <div class="dl-actions">
+        <button class="dl-btn primary" onclick="copyDayLog('period', this)">Copy This Period</button>
+        <button class="dl-btn" onclick="copyDayLog('day', this)">Copy Day Total</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings overlay -->
+<div class="settings-overlay" id="settingsOverlay" onclick="overlayClick(event)">
+  <div class="settings-panel">
+    <div class="settings-panel-header">
+      <div class="settings-panel-title">Settings</div>
+      <button class="settings-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-tab-bar">
+        <button class="settings-tab active" onclick="switchTab('shared')">Shared</button>
+        <button class="settings-tab" onclick="switchTab('alt')">Alternative</button>
+        <button class="settings-tab" onclick="switchTab('personal')">Personal</button>
+      </div>
+
+      <!-- Shared tab -->
+      <div class="tab-content active" id="tab-shared">
+        <div class="admin-gate" id="adminGate">
+          <div class="admin-gate-title">🔒 Admin access required to edit shared settings</div>
+          <div class="admin-input-row">
+            <input type="password" class="admin-pw-input" id="adminPwInput" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')checkAdmin()" />
+            <button class="admin-pw-btn" onclick="checkAdmin()">Unlock</button>
+          </div>
+          <div class="pw-error" id="pwError">Incorrect password</div>
+        </div>
+        <div id="sharedContent" class="admin-locked">
+          <div class="settings-section-title">Number of levels</div>
+          <div class="level-count-row">
+            <div class="level-count-btns" id="countBtns"></div>
+          </div>
+          <div class="settings-section-title">Default layout emojis &amp; labels</div>
+          <div id="defaultLevelRows"></div>
+          <button class="save-btn" onclick="saveShared()">Save shared settings</button>
+        </div>
+      </div>
+
+      <!-- Alt tab -->
+      <div class="tab-content" id="tab-alt">
+        <div id="altContent">
+          <div class="settings-hint">Alternative layout uses the same number of levels and labels as the default — only emojis can be changed here.</div>
+          <div class="settings-section-title">Alternative layout emojis &amp; labels</div>
+          <div id="altLevelRows"></div>
+          <button class="save-btn" onclick="saveAlt()">Save alternative layout</button>
+        </div>
+      </div>
+
+      <!-- Personal tab -->
+      <div class="tab-content" id="tab-personal">
+        <div class="settings-hint">Personal settings are saved to this browser only and don't affect other users.</div>
+        <div class="settings-section-title">Page width</div>
+        <div class="width-options" id="widthOptions"></div>
+        <button class="save-btn save-btn-personal" onclick="savePersonal()">Save personal settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Import overlay -->
+<div class="history-overlay" id="importOverlay" onclick="importOverlayClick(event)">
+  <div class="history-panel">
+    <div class="history-panel-header">
+      <div class="history-panel-title">Import State</div>
+      <button class="history-close" onclick="closeImport()">✕</button>
+    </div>
+    <div class="history-body">
+      <div class="settings-hint" style="margin-bottom:12px;">Paste a copied message below to restore that state. This will overwrite the current tracker for everyone.</div>
+      <div id="importEmojiHint" style="font-size:11px;color:var(--text-dim);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;margin-bottom:12px;line-height:1.8;"></div>
+      <textarea id="importTextarea" style="width:100%;height:220px;background:#0f0f0f;border:1px solid var(--border);border-radius:6px;padding:10px;font-family:DM Mono,monospace;font-size:11px;color:var(--text);outline:none;resize:vertical;line-height:1.8;" placeholder="Paste message here..."></textarea>
+      <div id="importError" style="font-size:11px;color:var(--red);margin-top:8px;display:none;"></div>
+      <button class="save-btn" style="margin-top:12px;" onclick="doImport()">Load State</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied!</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+const SUPABASE_URL = 'https://afxfuznikqryqglaxmft.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_vhAJ1XhbzNVA2EfZhAX5tQ_jfA5YxR-';
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const ADMIN_PASSWORD = "amnesty123";
+
+const WIDTHS = [520, 580, 640, 700, 760];
+
+const EMOJI_CATS = [
+  { name: 'Squares', emojis: ['⬜','⬛','🟥','🟧','🟨','🟩','🟦','🟪','🟫'] },
+  { name: 'Circles', emojis: ['🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🔘','🔵'] },
+  { name: 'Status', emojis: ['✅','❌','⚠️','🚨','🚫','💯','❗','❓','🔔','📣','🏴','🚩','🟢','🔴'] },
+  { name: 'Fire & energy', emojis: ['🔥','💥','⚡','💢','❄️','🌊','🌪️','☀️','🌙','⭐','✨','💫'] },
+  { name: 'Arrows & symbols', emojis: ['🔺','🔻','🔼','🔽','⬆️','⬇️','➡️','⬅️','↗️','↘️','🔆','🔅','♾️','🔁'] },
+  { name: 'Objects', emojis: ['📦','📫','📬','🗂️','📋','🏷️','🔑','🔒','🔓','🛑','⛔','🚧','📌','📍'] },
+  { name: 'Food & nature', emojis: ['🍎','🍊','🍋','🍏','🫐','🍇','🌿','🌱','🌾','🍂','🌻','🌹'] },
+  { name: 'Faces', emojis: ['😀','😬','😐','😟','😡','🤯','😴','🥴','🤔','👀','💀','🤖'] },
+  { name: 'Hands & people', emojis: ['👍','👎','✋','🤚','👌','🤌','💪','🙌','👏','🤝','🫡','🫸'] },
+];
+
+const DEFAULT_EMOJIS_5 = ['⬜','🟩','🟨','🟧','🟥'];
+const DEFAULT_LABELS_5 = ['E','25','50','75','F'];
+
+let numLevels = 5;
+let defaultEmojis = [...DEFAULT_EMOJIS_5];
+let defaultLabels = [...DEFAULT_LABELS_5];
+let altEmojis = [...DEFAULT_EMOJIS_5];
+let altLabels = [...DEFAULT_LABELS_5];
+let activeLayout = localStorage.getItem('activeLayout') || 'default';
+let pageWidth = parseInt(localStorage.getItem('pageWidth') || '700');
+
+const state = {};
+const capTimes = {};
+const disabledCaps = new Set();
+const conPairs = [];
+for (let i = 152; i >= 127; i--) {
+  if (i === 146) conPairs.push(['400/401', 146]);
+  else conPairs.push([i + 100, i]);
+}
+const brgPairs = [];
+for (let i = 112; i >= 100; i--) brgPairs.push([i + 103, i]);
+const brgSolo = ['202'];
+const bulkSolo = ['Bulk'];
+
+function allKeys() {
+  const keys = [];
+  [...conPairs, ...brgPairs].forEach(([a, b]) => { keys.push(String(a)); keys.push(String(b)); });
+  brgSolo.forEach(k => keys.push(k));
+  bulkSolo.forEach(k => keys.push(k));
+  return keys;
+}
+
+function initState() { allKeys().forEach(k => state[k] = 0); }
+
+function currentEmojis() { return activeLayout === 'alt' ? altEmojis : defaultEmojis; }
+function currentLabels() { return activeLayout === 'alt' ? altLabels : defaultLabels; }
+
+function setStatus(type, text) {
+  document.getElementById('statusDot').className = 'status-dot ' + type;
+  document.getElementById('statusText').textContent = text;
+}
+
+let saveTimeout = null;
+function scheduleSave(key) {
+  if (key) capTimes[key] = new Date().toISOString();
+  setStatus('syncing', 'Saving...');
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(async () => {
+    try {
+      const { error } = await sb.from('tracker_state').upsert({ id: 'state', caps: { ...state }, cap_times: { ...capTimes }, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setStatus('synced', 'Saved');
+      saveTimeout = null;
+    } catch (e) {
+      setStatus('error', 'Save failed');
+      saveTimeout = null;
+    }
+  }, 800);
+}
+
+function formatCapTime(ts) {
+  if (!ts) return null;
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  if (diff > 8 * 3600000) return null;
+  let text;
+  if (mins < 1) text = 'just now';
+  else if (mins < 60) text = `${mins}m ago`;
+  else text = `${hours}h ${mins % 60}m ago`;
+  let color;
+  if (diff < 60 * 60000) color = '#5b9cf5';
+  else if (diff < 4 * 3600000) color = '#eab308';
+  else color = '#ef4444';
+  return { text, color };
+}
+
+function formatTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' at ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function applyWidth(w) {
+  pageWidth = w;
+  document.documentElement.style.setProperty('--page-width', w + 'px');
+}
+
+function buildLegend() {
+  const legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  const em = currentEmojis();
+  const lb = currentLabels();
+  const colors = ['#f0f0f0','var(--green)','var(--yellow)','var(--orange)','var(--red)','#818cf8','#c084fc'];
+  for (let i = 0; i < numLevels; i++) {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-dot" style="background:${colors[i]}"></div>${em[i]} ${lb[i]}`;
+    legend.appendChild(item);
+  }
+}
+
+function makeCapBlock(key) {
+  const div = document.createElement('div');
+  const isDisabled = disabledCaps.has(key);
+  div.className = 'cap-block' + (isDisabled ? ' cap-disabled' : '');
+
+  const id = document.createElement('div');
+  id.className = 'cap-id';
+  id.textContent = key;
+  div.appendChild(id);
+
+  if (!isDisabled) {
+    const grp = document.createElement('div');
+    grp.className = 'btn-group';
+    const lb = currentLabels();
+    for (let lvl = 0; lvl < numLevels; lvl++) {
+      const btn = document.createElement('button');
+      btn.className = 'level-btn';
+      btn.textContent = lb[lvl];
+      if (state[key] === lvl) btn.classList.add(`active-${lvl}`);
+      else if (dayLog && dayLog.ghost[key] === lvl) btn.classList.add(`ghost-${lvl}`);
+      btn.onclick = () => {
+        const prev = state[key];
+        state[key] = lvl;
+        if (prev !== lvl) recordDayLogChange(key, prev, lvl, false);
+        grp.querySelectorAll('.level-btn').forEach((b, i) => {
+          b.className = 'level-btn';
+          if (i === lvl) b.classList.add(`active-${lvl}`);
+          else if (dayLog && dayLog.ghost[key] === i) b.classList.add(`ghost-${i}`);
+        });
+        scheduleSave(key);
+        // Update timestamp display immediately
+        const tsEl = div.querySelector('.cap-time');
+        if (tsEl) { tsEl.textContent = 'just now'; tsEl.style.color = '#5b9cf5'; }
+      };
+      grp.appendChild(btn);
+    }
+    div.appendChild(grp);
+  }
+
+  // Timestamp
+  const ts = capTimes[key];
+  const now = Date.now();
+  const tsEl = document.createElement('div');
+  tsEl.className = 'cap-time';
+  tsEl.dataset.key = key;
+  const capTimeResult = formatCapTime(ts);
+  if (capTimeResult) {
+    tsEl.textContent = capTimeResult.text;
+    tsEl.style.color = capTimeResult.color;
+  }
+  div.appendChild(tsEl);
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.className = 'cap-toggle-btn';
+  toggleBtn.title = isDisabled ? 'Enable cap' : 'Disable cap';
+  toggleBtn.textContent = isDisabled ? 'ON' : 'OFF';
+  toggleBtn.onclick = () => toggleCap(key);
+  div.appendChild(toggleBtn);
+
+  return div;
+}
+
+function buildSection(containerId, title, pairs, soloKeys = []) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  const hdr = document.createElement('div');
+  hdr.className = 'section-header';
+  hdr.innerHTML = `<div class="section-title">${title}</div>`;
+  container.appendChild(hdr);
+  const pairsDiv = document.createElement('div');
+  pairsDiv.className = 'pairs';
+  pairs.forEach(([a, b], idx) => {
+    const row = document.createElement('div');
+    row.className = 'pair-row' + (idx % 2 === 1 ? ' alt' : '');
+    row.appendChild(makeCapBlock(String(a)));
+    const divEl = document.createElement('div');
+    divEl.className = 'pair-divider';
+    divEl.textContent = '—';
+    row.appendChild(divEl);
+    row.appendChild(makeCapBlock(String(b)));
+    pairsDiv.appendChild(row);
+  });
+  soloKeys.forEach((k, idx) => {
+    const row = document.createElement('div');
+    row.className = 'solo-row' + ((pairs.length + idx) % 2 === 1 ? ' alt' : '');
+    row.appendChild(makeCapBlock(k));
+    row.appendChild(document.createElement('div'));
+    row.appendChild(document.createElement('div'));
+    pairsDiv.appendChild(row);
+  });
+  container.appendChild(pairsDiv);
+}
+
+async function toggleCap(key) {
+  if (disabledCaps.has(key)) {
+    disabledCaps.delete(key);
+  } else {
+    disabledCaps.add(key);
+  }
+  rebuildAll();
+  await saveDisabledCaps();
+}
+
+async function saveDisabledCaps() {
+  try {
+    const { error } = await sb.from('tracker_settings').upsert({
+      id: 'settings',
+      data: { defaultEmojis, defaultLabels, altEmojis, altLabels, numLevels, disabledCaps: [...disabledCaps] }
+    });
+    if (error) throw error;
+  } catch(e) { console.error('Failed to save disabled caps', e); }
+}
+
+function setAdminMode(active) {
+  document.body.classList.toggle('admin-active', active);
+}
+
+function rebuildAll() {
+  buildLegend();
+  buildSection('con-section', 'Conveyable', conPairs);
+  buildSection('bulk-section', 'Bulk', [], bulkSolo);
+  buildSection('brg-section', 'BRG', brgPairs, brgSolo);
+  document.getElementById('activeLayoutLabel').textContent = activeLayout === 'alt' ? 'Alternative layout' : 'Default layout';
+  document.getElementById('btnDefault').classList.toggle('active', activeLayout === 'default');
+  document.getElementById('btnAlt').classList.toggle('active', activeLayout === 'alt');
+}
+
+function buildFullMessage() {
+  const em = currentEmojis();
+  const lines = [];
+  lines.push('--- Conveyable ---');
+  conPairs.forEach(([a, b]) => {
+    const aLabel = String(a) === '400/401' ? '400' : String(a);
+    const bLabel = String(b) === '400/401' ? '400' : String(b);
+    lines.push(`${aLabel}: ${em[state[String(a)]]}          ${bLabel}: ${em[state[String(b)]]}`);
+  });
+  lines.push('');
+  lines.push('--- Bulk ---');
+  bulkSolo.forEach(k => lines.push(`${k}: ${em[state[k]]}`));
+  lines.push('');
+  lines.push('--- BRG ---');
+  brgPairs.forEach(([a, b]) => {
+    lines.push(`${a}: ${em[state[String(a)]]}          ${b}: ${em[state[String(b)]]}`);
+  });
+  brgSolo.forEach(k => lines.push(`${k}: ${em[state[k]]}`));
+  return lines.join('\n');
+}
+
+function buildMessage(pairs, soloKeys = []) {
+  const em = currentEmojis();
+  const lines = [];
+  pairs.forEach(([a, b]) => {
+    const aKey = String(a);
+    const bKey = String(b);
+    const aDisabled = disabledCaps.has(aKey);
+    const bDisabled = disabledCaps.has(bKey);
+    if (aDisabled && bDisabled) return;
+    const aLabel = aKey === '400/401' ? '400' : aKey;
+    const bLabel = bKey === '400/401' ? '400' : bKey;
+    if (aDisabled) { lines.push(`                        ${bLabel}: ${em[state[bKey]]}`); return; }
+    if (bDisabled) { lines.push(`${aLabel}: ${em[state[aKey]]}`); return; }
+    lines.push(`${aLabel}: ${em[state[aKey]]}          ${bLabel}: ${em[state[bKey]]}`);
+  });
+  soloKeys.filter(k => !disabledCaps.has(k)).forEach(k => lines.push(`${k}: ${em[state[k]]}`));
+  return lines.join('\n');
+}
+
+async function saveHistoryEntry(tag, message) {
+  try {
+    const { error } = await sb.from('history').insert({
+      tag,
+      message,
+      caps: { ...state },
+      layout: activeLayout,
+      saved_at: new Date().toISOString()
+    });
+    if (error) throw error;
+  } catch(e) { console.error('History save failed', e); }
+}
+
+window.openImport = function() {
+  document.getElementById('importTextarea').value = '';
+  document.getElementById('importError').style.display = 'none';
+  // Show which emojis the tracker currently expects
+  const em = currentEmojis();
+  const lb = currentLabels();
+  const hintEl = document.getElementById('importEmojiHint');
+  hintEl.innerHTML = '<span style="color:var(--text-faint);letter-spacing:0.08em;text-transform:uppercase;font-size:10px;">Expected emojis</span><br>' +
+    em.map((e, i) => `<span style="margin-right:12px;">Level ${i+1} (${lb[i]}): ${e}</span>`).join('');
+  document.getElementById('importOverlay').classList.add('open');
+};
+
+window.closeImport = function() {
+  document.getElementById('importOverlay').classList.remove('open');
+};
+
+window.importOverlayClick = function(e) {
+  if (e.target === document.getElementById('importOverlay')) closeImport();
+};
+
+window.doImport = function() {
+  const text = document.getElementById('importTextarea').value.trim();
+  const errEl = document.getElementById('importError');
+  errEl.style.display = 'none';
+
+  if (!text) {
+    errEl.textContent = 'Please paste a message first.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Build emoji->level map from current layout
+  // Strip variation selectors (e.g. U+FE0F) so emojis match regardless of rendering style
+  const stripVS = s => s.replace(/\uFE0F/g, '');
+
+  // Pre-process text to replace Slack :codes: with real emojis
+  const slackCodeMap = {
+    ':white_check_mark:': '✅',
+    ':large_yellow_square:': '🟨',
+    ':x:': '❌',
+    ':rotating_light:': '🚨',
+    ':large_orange_square:': '🟧',
+    ':large_red_square:': '🟥',
+    ':large_green_square:': '🟩',
+    ':large_blue_square:': '🟦',
+    ':white_large_square:': '⬜',
+    ':black_large_square:': '⬛',
+    ':fire:': '🔥',
+    ':warning:': '⚠️',
+    ':heavy_check_mark:': '✔️',
+  };
+  let processedText = text;
+  for (const [code, emoji] of Object.entries(slackCodeMap)) {
+    processedText = processedText.split(code).join(emoji);
+  }
+
+  const em = currentEmojis();
+  const lb = currentLabels();
+  const emojiToLevel = {};
+  em.forEach((e, i) => { emojiToLevel[stripVS(e)] = i; });
+  // Also match text labels (e.g. "E", "25", "F")
+  lb.forEach((l, i) => { if (l) emojiToLevel[l.trim()] = i; });
+
+  let matched = 0;
+  const lines = processedText.split('\n');
+  for (const line of lines) {
+    // Match all "KEY: EMOJI" pairs on the line (handles both left and right side)
+    const pattern = /([\w\/]+):\s*(\S+)/gu;
+    let m;
+    while ((m = pattern.exec(line)) !== null) {
+      const key = m[1].trim();
+      const emojiRaw = stripVS(m[2].trim());
+      const resolvedKey = key === '400' ? '400/401' : key;
+      if (state.hasOwnProperty(resolvedKey) && emojiToLevel.hasOwnProperty(emojiRaw)) {
+        state[resolvedKey] = emojiToLevel[emojiRaw];
+        matched++;
+      }
+    }
+  }
+
+  if (matched === 0) {
+    errEl.textContent = 'No matching caps found. Make sure the emojis in your message match the expected emojis shown above.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  rebuildAll();
+  scheduleSave();
+  closeImport();
+  showToast(`Imported ${matched} caps!`);
+};
+
+function buildHalfMessage(keys) {
+  const em = currentEmojis();
+  return keys.filter(k => !disabledCaps.has(k)).map(k => {
+    const label = k === '400/401' ? '400' : k;
+    return `${label}: ${em[state[k] ?? 0]}`;
+  }).join('\n');
+}
+
+// CON 200s = left column of each pair (a), CON 100s = right column (b)
+// 400/401 is in the 200s since it sits at the 246 position
+const con200Keys = conPairs.map(([a]) => String(a));
+const con100Keys = conPairs.map(([, b]) => String(b));
+// BRG 200s = left column + brgSolo (202), BRG 100s = right column
+const brg200Keys = [...brgPairs.map(([a]) => String(a)), ...brgSolo];
+const brg100Keys = brgPairs.map(([, b]) => String(b));
+
+window.copySection = function(which, btn) {
+  let text = '';
+  let tag = '';
+  if (which === 'con') { text = buildMessage(conPairs); tag = 'con'; }
+  else if (which === 'brg') { text = buildMessage(brgPairs, brgSolo); tag = 'brg'; }
+  else if (which === 'con200') { text = buildHalfMessage(con200Keys); tag = 'con'; }
+  else if (which === 'con100') { text = buildHalfMessage(con100Keys); tag = 'con'; }
+  else if (which === 'brg200') { text = buildHalfMessage(brg200Keys); tag = 'brg'; }
+  else if (which === 'brg100') { text = buildHalfMessage(brg100Keys); tag = 'brg'; }
+  else { text = buildMessage(conPairs) + '\n\n' + buildMessage([], bulkSolo) + '\n\n' + buildMessage(brgPairs, brgSolo); tag = 'both'; }
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Copied!');
+    saveHistoryEntry(tag, buildFullMessage());
+    if (btn) {
+      btn.classList.add('flash');
+      setTimeout(() => btn.classList.remove('flash'), 400);
+    }
+  });
+};
+
+const HOUR_MS = 60 * 60 * 1000;
+let hourlyTimer = null;
+
+async function getLastAutoSnapshotTime() {
+  try {
+    const { data, error } = await sb.from('history').select('saved_at').eq('tag', 'auto').order('saved_at', { ascending: false }).limit(1);
+    if (error) throw error;
+    if (data && data.length > 0) return new Date(data[0].saved_at).getTime();
+  } catch(e) { console.error('Could not fetch last auto snapshot', e); }
+  return 0;
+}
+
+let stateLoaded = false;
+
+async function startHourlySnapshot() {
+  if (hourlyTimer) clearInterval(hourlyTimer);
+
+  const lastTime = await getLastAutoSnapshotTime();
+  const now = Date.now();
+  const elapsed = now - lastTime;
+  const remaining = HOUR_MS - elapsed;
+
+  // If it's been over an hour since last auto-save, fire one immediately
+  // but only if state has been loaded from the server first
+  if (remaining <= 0) {
+    if (stateLoaded) await saveHistoryEntry('auto', buildFullMessage());
+    hourlyTimer = setInterval(async () => {
+      if (stateLoaded) await saveHistoryEntry('auto', buildFullMessage());
+    }, HOUR_MS);
+  } else {
+    // Wait out the remainder, then go on the regular interval
+    hourlyTimer = setTimeout(async () => {
+      if (stateLoaded) await saveHistoryEntry('auto', buildFullMessage());
+      hourlyTimer = setInterval(async () => {
+        if (stateLoaded) await saveHistoryEntry('auto', buildFullMessage());
+      }, HOUR_MS);
+    }, remaining);
+  }
+}
+
+// History UI
+let historyEntries = [];
+let historyPage = 0;
+const HISTORY_PAGE_SIZE = 10;
+
+function tagLabel(tag) {
+  if (tag === 'auto') return { text: 'Auto snapshot', cls: 'tag-auto' };
+  if (tag === 'con') return { text: 'Copied CON', cls: 'tag-con' };
+  if (tag === 'brg') return { text: 'Copied BRG', cls: 'tag-brg' };
+  if (tag === 'both') return { text: 'Copied Both', cls: 'tag-both' };
+  if (tag === 'period') return { text: 'Day log · Period', cls: 'tag-log' };
+  if (tag === 'day') return { text: 'Day log · Day total', cls: 'tag-log' };
+  return { text: tag, cls: '' };
+}
+
+function formatHistoryTime(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) + ' — ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function renderHistory() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '';
+  if (historyEntries.length === 0) {
+    body.innerHTML = '<div class="history-empty">No history yet. History saves when you copy or every hour.</div>';
+    return;
+  }
+  const visible = historyEntries.slice(0, (historyPage + 1) * HISTORY_PAGE_SIZE);
+  visible.forEach((entry, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'history-entry';
+    const { text: tagText, cls } = tagLabel(entry.tag);
+    const hdr = document.createElement('div');
+    hdr.className = 'history-entry-header';
+    hdr.innerHTML = `
+      <div class="history-entry-meta">
+        <div class="history-entry-time">${formatHistoryTime(entry.savedAt)}</div>
+        <div class="history-entry-tag ${cls}">${tagText}${entry.layout === 'alt' ? ' · Alt layout' : ''}</div>
+      </div>
+      <div class="history-chevron">▼</div>`;
+    hdr.onclick = () => wrap.classList.toggle('expanded');
+    wrap.appendChild(hdr);
+    const bodyEl = document.createElement('div');
+    bodyEl.className = 'history-entry-body';
+    const msg = document.createElement('div');
+    msg.className = 'history-msg';
+    msg.textContent = entry.message || '—';
+    bodyEl.appendChild(msg);
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'history-copy-btn';
+    copyBtn.textContent = 'Copy this message';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(entry.message || '');
+      showToast('Copied!');
+    };
+    bodyEl.appendChild(copyBtn);
+    wrap.appendChild(bodyEl);
+    body.appendChild(wrap);
+  });
+
+  if (historyEntries.length > (historyPage + 1) * HISTORY_PAGE_SIZE) {
+    const more = document.createElement('button');
+    more.className = 'history-load-more';
+    more.textContent = 'Load more';
+    more.onclick = () => { historyPage++; renderHistory(); };
+    body.appendChild(more);
+  }
+}
+
+async function loadHistory() {
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await sb.from('history').select('*').gte('saved_at', sevenDaysAgo).order('saved_at', { ascending: false }).limit(100);
+    if (error) throw error;
+    historyEntries = (data || []).map(d => ({ ...d, savedAt: d.saved_at }));
+  } catch(e) { console.error('History load failed', e); historyEntries = []; }
+}
+
+window.openHistory = async function() {
+  historyPage = 0;
+  document.getElementById('historyOverlay').classList.add('open');
+  document.getElementById('historyBody').innerHTML = '<div class="history-empty">Loading...</div>';
+  await loadHistory();
+  renderHistory();
+};
+
+window.closeHistory = function() {
+  document.getElementById('historyOverlay').classList.remove('open');
+};
+
+window.historyOverlayClick = function(e) {
+  if (e.target === document.getElementById('historyOverlay')) closeHistory();
+};
+
+window.switchLayout = function(layout) {
+  activeLayout = layout;
+  localStorage.setItem('activeLayout', layout);
+  rebuildAll();
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// Settings
+let activeTab = 'shared';
+let adminUnlocked = false;
+
+let activePicker = null;
+let draftDefault = { emojis: [], labels: [] };
+let draftAlt = { emojis: [], labels: [] };
+let draftLevels = numLevels;
+let draftWidth = pageWidth;
+
+window.switchTab = function(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.settings-tab').forEach((t, i) => {
+    t.classList.toggle('active', ['shared','alt','personal'][i] === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+};
+
+window.checkAdmin = function() {
+  const pw = document.getElementById('adminPwInput').value;
+  if (pw === ADMIN_PASSWORD) {
+    adminUnlocked = true;
+    document.getElementById('adminGate').innerHTML = '<div class="admin-unlocked-badge">🔓 Admin unlocked</div>';
+    document.getElementById('sharedContent').classList.remove('admin-locked');
+    setAdminMode(true);
+  } else {
+    document.getElementById('pwError').classList.add('show');
+    setTimeout(() => document.getElementById('pwError').classList.remove('show'), 2000);
+  }
+};
+
+
+function makeLevelRows(containerId, draftObj, prefix, showLabels = true) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  for (let i = 0; i < draftLevels; i++) {
+    const row = document.createElement('div');
+    row.className = 'level-row';
+    const num = document.createElement('div');
+    num.className = 'level-num';
+    num.textContent = i + 1;
+    row.appendChild(num);
+    const trigger = document.createElement('button');
+    trigger.className = 'emoji-trigger';
+    trigger.id = `${prefix}-trigger-${i}`;
+    trigger.textContent = draftObj.emojis[i] || '⬜';
+    trigger.onclick = () => togglePicker(prefix, i, draftObj);
+    row.appendChild(trigger);
+    if (showLabels) {
+      const input = document.createElement('input');
+      input.className = 'level-label-input';
+      input.value = draftObj.labels[i] || '';
+      input.maxLength = 6;
+      input.placeholder = 'Label';
+      const idx = i;
+      input.oninput = () => { draftObj.labels[idx] = input.value; };
+      row.appendChild(input);
+    } else {
+      const labelDisplay = document.createElement('div');
+      labelDisplay.style.cssText = 'flex:1;padding:7px 10px;font-size:12px;color:var(--text-faint);font-family:DM Mono,monospace;';
+      labelDisplay.textContent = defaultLabels[i] || '';
+      row.appendChild(labelDisplay);
+    }
+    const pickerWrap = document.createElement('div');
+    pickerWrap.className = 'emoji-picker-wrap';
+    pickerWrap.id = `${prefix}-picker-${i}`;
+    const searchInput = document.createElement('input');
+    searchInput.className = 'emoji-search';
+    searchInput.placeholder = 'Search emojis...';
+    searchInput.oninput = () => filterEmojis(prefix, i, searchInput.value, draftObj);
+    pickerWrap.appendChild(searchInput);
+    const catsWrap = document.createElement('div');
+    catsWrap.id = `${prefix}-cats-${i}`;
+    EMOJI_CATS.forEach(cat => {
+      const catDiv = document.createElement('div');
+      catDiv.className = 'emoji-category';
+      const catTitle = document.createElement('div');
+      catTitle.className = 'emoji-cat-title';
+      catTitle.textContent = cat.name;
+      catDiv.appendChild(catTitle);
+      const grid = document.createElement('div');
+      grid.className = 'emoji-grid';
+      cat.emojis.forEach(emo => {
+        const opt = document.createElement('span');
+        opt.className = 'emoji-opt';
+        opt.textContent = emo;
+        opt.onclick = () => selectEmoji(prefix, i, emo, draftObj);
+        grid.appendChild(opt);
+      });
+      catDiv.appendChild(grid);
+      catsWrap.appendChild(catDiv);
+    });
+    pickerWrap.appendChild(catsWrap);
+    container.appendChild(row);
+    container.appendChild(pickerWrap);
+  }
+}
+
+function filterEmojis(prefix, idx, query, draftObj) {
+  const catsWrap = document.getElementById(`${prefix}-cats-${idx}`);
+  catsWrap.innerHTML = '';
+  const all = EMOJI_CATS.flatMap(c => c.emojis);
+  const results = query ? all.filter(e => e.includes(query)) : null;
+  if (results) {
+    const grid = document.createElement('div');
+    grid.className = 'emoji-grid';
+    results.forEach(emo => {
+      const opt = document.createElement('span');
+      opt.className = 'emoji-opt';
+      opt.textContent = emo;
+      opt.onclick = () => selectEmoji(prefix, idx, emo, draftObj);
+      grid.appendChild(opt);
+    });
+    catsWrap.appendChild(grid);
+  } else {
+    EMOJI_CATS.forEach(cat => {
+      const catDiv = document.createElement('div');
+      catDiv.className = 'emoji-category';
+      const catTitle = document.createElement('div');
+      catTitle.className = 'emoji-cat-title';
+      catTitle.textContent = cat.name;
+      catDiv.appendChild(catTitle);
+      const grid = document.createElement('div');
+      grid.className = 'emoji-grid';
+      cat.emojis.forEach(emo => {
+        const opt = document.createElement('span');
+        opt.className = 'emoji-opt';
+        opt.textContent = emo;
+        opt.onclick = () => selectEmoji(prefix, idx, emo, draftObj);
+        grid.appendChild(opt);
+      });
+      catDiv.appendChild(grid);
+      catsWrap.appendChild(catDiv);
+    });
+  }
+}
+
+function togglePicker(prefix, idx, draftObj) {
+  const key = `${prefix}-${idx}`;
+  if (activePicker === key) {
+    document.getElementById(`${prefix}-picker-${idx}`).classList.remove('open');
+    activePicker = null;
+  } else {
+    if (activePicker) {
+      const [p, i] = activePicker.split('-').reduce((a,v,i,arr) => i===arr.length-1 ? [arr.slice(0,-1).join('-'), v] : a, []);
+      const el = document.getElementById(`${p}-picker-${i}`);
+      if (el) el.classList.remove('open');
+    }
+    document.getElementById(`${prefix}-picker-${idx}`).classList.add('open');
+    activePicker = key;
+  }
+}
+
+function selectEmoji(prefix, idx, emo, draftObj) {
+  draftObj.emojis[idx] = emo;
+  document.getElementById(`${prefix}-trigger-${idx}`).textContent = emo;
+  document.getElementById(`${prefix}-picker-${idx}`).classList.remove('open');
+  activePicker = null;
+}
+
+function smartLabels(n) {
+  if (n === 3) return ['E', '50', 'F'];
+  if (n === 4) return ['E', '33', '66', 'F'];
+  if (n === 5) return ['E', '25', '50', '75', 'F'];
+  if (n === 6) return ['E', '20', '40', '60', '80', 'F'];
+  if (n === 7) return ['E', '17', '33', '50', '67', '83', 'F'];
+  return ['E', 'F'];
+}
+
+function buildCountBtns() {
+  const wrap = document.getElementById('countBtns');
+  wrap.innerHTML = '';
+  for (let n = 3; n <= 7; n++) {
+    const btn = document.createElement('button');
+    btn.className = 'count-btn' + (n === draftLevels ? ' active' : '');
+    btn.textContent = n;
+    btn.onclick = () => {
+      draftLevels = n;
+      wrap.querySelectorAll('.count-btn').forEach((b, i) => b.classList.toggle('active', i + 3 === n));
+      draftDefault.labels = smartLabels(n);
+      draftAlt.labels = smartLabels(n);
+      padDraft(draftDefault);
+      padDraft(draftAlt);
+      makeLevelRows('defaultLevelRows', draftDefault, 'def', true);
+      makeLevelRows('altLevelRows', draftAlt, 'alt', false);
+    };
+    wrap.appendChild(btn);
+  }
+}
+
+function padDraft(draft) {
+  while (draft.emojis.length < draftLevels) draft.emojis.push('⬜');
+  while (draft.labels.length < draftLevels) draft.labels.push(smartLabels(draftLevels)[draft.labels.length] || 'L');
+  draft.emojis = draft.emojis.slice(0, draftLevels);
+  draft.labels = draft.labels.slice(0, draftLevels);
+}
+
+function buildWidthOptions() {
+  const wrap = document.getElementById('widthOptions');
+  wrap.innerHTML = '';
+  WIDTHS.forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'width-opt-btn' + (w === draftWidth ? ' active' : '');
+    btn.textContent = w + 'px';
+    btn.onclick = () => {
+      draftWidth = w;
+      wrap.querySelectorAll('.width-opt-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+window.openSettings = function() {
+  activePicker = null;
+  draftLevels = numLevels;
+  draftDefault = { emojis: [...defaultEmojis], labels: [...defaultLabels] };
+  draftAlt = { emojis: [...altEmojis], labels: [...altLabels] };
+  draftWidth = pageWidth;
+  buildCountBtns();
+  makeLevelRows('defaultLevelRows', draftDefault, 'def', true);
+  makeLevelRows('altLevelRows', draftAlt, 'alt', false);
+  buildWidthOptions();
+  // Restore unlocked state if already admin
+  if (adminUnlocked) {
+    document.getElementById('adminGate').innerHTML = '<div class="admin-unlocked-badge">🔓 Admin unlocked</div>';
+    document.getElementById('sharedContent').classList.remove('admin-locked');
+  }
+  document.getElementById('settingsOverlay').classList.add('open');
+};
+
+window.closeSettings = function() {
+  document.getElementById('settingsOverlay').classList.remove('open');
+  activePicker = null;
+  if (!adminUnlocked) setAdminMode(false);
+};
+
+window.overlayClick = function(e) {
+  if (e.target === document.getElementById('settingsOverlay')) closeSettings();
+};
+
+window.saveShared = async function() {
+  numLevels = draftLevels;
+  defaultEmojis = [...draftDefault.emojis];
+  defaultLabels = [...draftDefault.labels];
+  altLabels = [...defaultLabels];
+  if (altEmojis.length !== numLevels) altEmojis = [...defaultEmojis];
+  rebuildAll();
+  try {
+    const { error } = await sb.from('tracker_settings').upsert({ id: 'settings', data: { defaultEmojis, defaultLabels, altEmojis, altLabels, numLevels, disabledCaps: [...disabledCaps] } });
+    if (error) throw error;
+    showToast('Shared settings saved!');
+  } catch(e) { showToast('Save failed'); }
+  closeSettings();
+};
+
+window.saveAlt = async function() {
+  altEmojis = [...draftAlt.emojis];
+  altLabels = [...draftAlt.labels];
+  rebuildAll();
+  try {
+    const { error } = await sb.from('tracker_settings').upsert({ id: 'settings', data: { defaultEmojis, defaultLabels, altEmojis, altLabels, numLevels, disabledCaps: [...disabledCaps] } });
+    if (error) throw error;
+    showToast('Alternative layout saved!');
+  } catch(e) { showToast('Save failed'); }
+  closeSettings();
+};
+
+window.savePersonal = function() {
+  applyWidth(draftWidth);
+  localStorage.setItem('pageWidth', draftWidth);
+  showToast('Personal settings saved!');
+  closeSettings();
+};
+
+async function loadSettings() {
+  try {
+    const { data, error } = await sb.from('tracker_settings').select('data').eq('id', 'settings').single();
+    if (error && error.code !== 'PGRST116') throw error;
+    if (data && data.data) {
+      const d = data.data;
+      if (d.numLevels) numLevels = d.numLevels;
+      if (d.defaultEmojis && d.defaultEmojis.length >= 3) defaultEmojis = d.defaultEmojis;
+      if (d.defaultLabels && d.defaultLabels.length >= 3) defaultLabels = d.defaultLabels;
+      if (d.altEmojis && d.altEmojis.length >= 3) altEmojis = d.altEmojis;
+      if (d.altLabels && d.altLabels.length >= 3) altLabels = d.altLabels;
+      if (d.disabledCaps && Array.isArray(d.disabledCaps)) {
+        disabledCaps.clear();
+        d.disabledCaps.forEach(k => disabledCaps.add(k));
+      }
+    }
+  } catch(e) { console.error('Settings load failed', e); }
+}
+
+async function init() {
+  initState();
+  applyWidth(pageWidth);
+  await loadSettings();
+  try {
+    const { data, error } = await sb.from('tracker_state').select('caps, cap_times, updated_at').eq('id', 'state').single();
+    if (error && error.code !== 'PGRST116') throw error;
+    if (data) {
+      if (data.caps) Object.keys(data.caps).forEach(k => { if (state.hasOwnProperty(k)) state[k] = data.caps[k] ?? 0; });
+      if (data.cap_times) Object.keys(data.cap_times).forEach(k => { capTimes[k] = data.cap_times[k]; });
+      if (data.updated_at) document.getElementById('lastUpdated').textContent = 'Last updated: ' + formatTime(data.updated_at);
+    }
+    stateLoaded = true;
+    setStatus('synced', 'Connected');
+  } catch (e) {
+    setStatus('error', 'Could not load');
+    console.error(e);
+  }
+
+  initDayLog();
+  rebuildAll();
+
+  // Populate timestamps on initial load
+  document.querySelectorAll('.cap-time').forEach(el => {
+    const key = el.dataset.key;
+    if (key && capTimes[key]) {
+      const result = formatCapTime(capTimes[key]);
+      if (result) { el.textContent = result.text; el.style.color = result.color; }
+    }
+  });
+
+  await startHourlySnapshot();
+
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('hidden');
+  setTimeout(() => overlay.remove(), 500);
+
+  // Refresh relative timestamps every minute
+  setInterval(() => {
+    document.querySelectorAll('.cap-time').forEach(el => {
+      const key = el.dataset.key;
+      if (key && capTimes[key]) {
+        const result = formatCapTime(capTimes[key]);
+        if (result) { el.textContent = result.text; el.style.color = result.color; }
+        else { el.textContent = ''; }
+      }
+    });
+  }, 60000);
+
+  sb.channel('tracker_state_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tracker_state', filter: 'id=eq.state' }, (payload) => {
+      if (!saveTimeout && payload.new) {
+        const data = payload.new;
+        if (data.caps) Object.keys(data.caps).forEach(k => {
+          if (!state.hasOwnProperty(k)) return;
+          const nv = data.caps[k] ?? 0;
+          if (state[k] !== nv) recordDayLogChange(k, state[k], nv, true);
+          state[k] = nv;
+        });
+        if (data.cap_times) Object.keys(data.cap_times).forEach(k => { capTimes[k] = data.cap_times[k]; });
+        rebuildAll();
+        if (data.updated_at) document.getElementById('lastUpdated').textContent = 'Last updated: ' + formatTime(data.updated_at);
+        setStatus('synced', 'Up to date');
+      }
+    })
+    .subscribe();
+}
+
+// ── Day Log ──
+// Kept in this browser only (each person uses their own computer).
+// "Mine" = levels clicked on this device. "Everyone" also includes changes that arrived
+// live from other people while this page was open. Day Total compares the board at
+// New Day against the board now, so it covers everything.
+const DAYLOG_KEY = 'amnestyDayLog';
+const QUICK_FIX_MS = 2 * 60000;   // going back up within 2 min of your own drop = fixing a mis-click
+let dayLog = null;
+let dayLogWho = 'mine';
+
+function saveDayLog() {
+  try { localStorage.setItem(DAYLOG_KEY, JSON.stringify(dayLog)); } catch (e) {}
+}
+function freshDayLog() {
+  const now = new Date().toISOString();
+  return { day: now, dayStart: { ...state }, periods: [{ n: 1, start: now, end: null }], changes: [], ghost: {} };
+}
+function curPeriod() { return dayLog.periods[dayLog.periods.length - 1]; }
+
+function initDayLog() {
+  try { dayLog = JSON.parse(localStorage.getItem(DAYLOG_KEY)); } catch (e) { dayLog = null; }
+  const ok = dayLog && dayLog.dayStart && Array.isArray(dayLog.periods) && dayLog.periods.length
+    && Array.isArray(dayLog.changes) && dayLog.ghost;
+  if (!ok) {
+    // Only start a log once the board has loaded, so the day starts from the real board
+    dayLog = stateLoaded ? freshDayLog() : null;
+    if (dayLog) saveDayLog();
+  }
+  renderShiftBar();
+}
+
+function recordDayLogChange(key, from, to, other) {
+  if (!dayLog || from === to) return;
+  dayLog.changes.push({ p: curPeriod().n, k: key, f: from, t: to, ts: Date.now(), o: other ? 1 : 0 });
+  if (!other) dayLog.ghost[key] = from;
+  saveDayLog();
+  if (document.getElementById('dayLogOverlay').classList.contains('open')) renderDayLog();
+}
+
+function dlDayLabel(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+function dlTime(iso) {
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function renderShiftBar() {
+  const info = document.getElementById('shiftInfo');
+  if (!dayLog) {
+    document.getElementById('shiftDay').textContent = 'Day log unavailable';
+    document.getElementById('shiftPeriod').style.display = 'none';
+    document.getElementById('shiftSince').textContent = '';
+    return;
+  }
+  document.getElementById('shiftPeriod').style.display = '';
+  document.getElementById('shiftDay').textContent = dlDayLabel(dayLog.day);
+  document.getElementById('shiftPeriod').textContent = 'Period ' + curPeriod().n;
+  document.getElementById('shiftSince').textContent = 'since ' + dlTime(curPeriod().start);
+  const stale = new Date(dayLog.day).toDateString() !== new Date().toDateString();
+  info.classList.toggle('stale', stale);
+  info.title = stale ? 'This log started on an earlier day — press New Day to start today' : '';
+}
+
+// Print order: CON 100s, CON 200s, Bulk, BRG 100s, BRG 200s (+202)
+function dlGroups() { return [con100Keys, con200Keys, bulkSolo, brg100Keys, brg200Keys]; }
+const dlLabel = k => k === '400/401' ? '400' : k;
+const dlEmoji = lvl => currentEmojis()[lvl] ?? '?';
+
+// Splits a period's changes into amnesty done (level went DOWN) and 5S (level went UP).
+// Back-to-back drops on one aisle join up (F→50 then 50→E = F→E).
+// Going back up within 2 min of your own drop on that aisle = fixing a mis-click, not 5S.
+function analyzePeriod(n, who) {
+  const evs = dayLog.changes.filter(c => c.p === n && (who === 'all' || !c.o)).sort((a, b) => a.ts - b.ts);
+  const down = {}, up = {}, last = {};
+  evs.forEach(c => {
+    const k = c.k, by = c.o ? 'other' : 'me', prev = last[k];
+    if (c.t < c.f) {
+      if (prev && prev.type === 'down' && prev.by === by && prev.r.t === c.f) { prev.r.t = c.t; prev.r.ts = c.ts; return; }
+      const r = { f: c.f, t: c.t, ts: c.ts };
+      (down[k] = down[k] || []).push(r); last[k] = { type: 'down', by, r };
+    } else {
+      if (prev && prev.type === 'down' && prev.by === by && prev.r.t === c.f && c.ts - prev.r.ts <= QUICK_FIX_MS) {
+        prev.r.t = c.t; prev.r.ts = c.ts;
+        if (prev.r.t >= prev.r.f) { down[k].splice(down[k].indexOf(prev.r), 1); if (!down[k].length) delete down[k]; delete last[k]; }
+        return;
+      }
+      const r = { f: c.f, t: c.t };
+      (up[k] = up[k] || []).push(r); last[k] = { type: 'up', by, r };
+    }
+  });
+  const blocks = map => dlGroups().map(g => g.filter(k => map[k] && !disabledCaps.has(k))
+    .map(k => `${dlLabel(k)}: ` + map[k].map(r => `${dlEmoji(r.f)} → ${dlEmoji(r.t)}`).join(', ')).join('\n')).filter(Boolean);
+  const count = map => Object.keys(map).filter(k => !disabledCaps.has(k)).length;
+  return { down: blocks(down), up: blocks(up), downCount: count(down), upCount: count(up) };
+}
+
+function periodText(p, who) {
+  const b = analyzePeriod(p.n, who).down;
+  return `Period ${p.n}\n` + (b.length ? b.join('\n\n') : 'No amnesty done');
+}
+
+// Whole warehouse: each aisle at New Day vs now. Down = amnesty done, up = 5S.
+function dayTotal() {
+  const down = [], up = [];
+  let dn = 0, un = 0;
+  dlGroups().forEach(g => {
+    const d = [], u = [];
+    g.forEach(k => {
+      if (disabledCaps.has(k)) return;
+      const a = dayLog.dayStart[k], b = state[k];
+      if (a === undefined || a === b) return;
+      if (b < a) { d.push(`${dlLabel(k)}: ${dlEmoji(a)} → ${dlEmoji(b)}`); dn++; }
+      else { u.push(`${dlLabel(k)}: ${dlEmoji(a)} → ${dlEmoji(b)}`); un++; }
+    });
+    if (d.length) down.push(d.join('\n'));
+    if (u.length) up.push(u.join('\n'));
+  });
+  return { down, up, downCount: dn, upCount: un };
+}
+function dayText() {
+  const t = dayTotal();
+  return [
+    dlDayLabel(dayLog.day),
+    'Amnesty Done\n' + (t.down.length ? t.down.join('\n\n') : 'None'),
+    '5S Done\n' + (t.up.length ? t.up.join('\n\n') : 'None'),
+    `${t.downCount} aisle${t.downCount === 1 ? '' : 's'} down · ${t.upCount} aisle${t.upCount === 1 ? '' : 's'} up`,
+  ].join('\n\n');
+}
+
+function dlCard(name, time, count, cls) {
+  const el = document.createElement('div');
+  el.className = 'dl-card' + (cls ? ' ' + cls : '');
+  el.innerHTML = '<div class="dl-card-head"><div><div class="dl-card-name"></div><div class="dl-card-time"></div></div><div class="dl-card-count"></div></div>';
+  el.querySelector('.dl-card-name').textContent = name;
+  el.querySelector('.dl-card-time').textContent = time;
+  el.querySelector('.dl-card-count').textContent = count;
+  return el;
+}
+function dlBlock(cls, text) {
+  const el = document.createElement('div'); el.className = cls; el.textContent = text; return el;
+}
+
+function renderDayLog() {
+  if (!dayLog) return;
+  document.getElementById('dlDayTitle').textContent = dlDayLabel(dayLog.day);
+  document.getElementById('dlHint').textContent = dayLogWho === 'mine'
+    ? "Amnesty you did on this computer. Levels that went up are from 5S and aren't counted."
+    : "Amnesty done by anyone while your page was open. Levels that went up are from 5S and aren't counted.";
+  document.querySelectorAll('.dl-who-btn').forEach(b => b.classList.toggle('active', b.dataset.who === dayLogWho));
+
+  const pBody = document.getElementById('dlPeriods'); pBody.innerHTML = '';
+  [...dayLog.periods].reverse().forEach(p => {
+    const a = analyzePeriod(p.n, dayLogWho);
+    const card = dlCard('Period ' + p.n + (p.end ? '' : ' (current)'),
+      dlTime(p.start) + ' – ' + (p.end ? dlTime(p.end) : 'now'),
+      a.downCount ? `${a.downCount} aisle${a.downCount > 1 ? 's' : ''}` : '');
+    card.appendChild(a.down.length ? dlBlock('dl-msg', a.down.join('\n\n')) : dlBlock('dl-empty', 'No amnesty done yet'));
+    if (a.up.length) {
+      card.appendChild(dlBlock('dl-up-head', `Went up — 5S, not counted (${a.upCount})`));
+      card.appendChild(dlBlock('dl-msg dl-up', a.up.join('\n\n')));
+    }
+    pBody.appendChild(card);
+  });
+
+  const dBody = document.getElementById('dlDay'); dBody.innerHTML = '';
+  const t = dayTotal();
+  const card = dlCard('Day total — whole warehouse', "Start of day vs now, everyone's changes",
+    `${t.downCount} down · ${t.upCount} up`, 'dl-day');
+  card.appendChild(dlBlock('dl-sub-head', 'Amnesty Done'));
+  card.appendChild(t.down.length ? dlBlock('dl-msg', t.down.join('\n\n')) : dlBlock('dl-empty', 'None yet'));
+  if (t.up.length) {
+    card.appendChild(dlBlock('dl-sub-head', '5S Done'));
+    card.appendChild(dlBlock('dl-msg', t.up.join('\n\n')));
+  }
+  dBody.appendChild(card);
+}
+
+window.openDayLog = function() {
+  if (!dayLog) { showToast('Day log unavailable — board did not load'); return; }
+  renderDayLog();
+  document.getElementById('dayLogOverlay').classList.add('open');
+};
+window.closeDayLog = function() { document.getElementById('dayLogOverlay').classList.remove('open'); };
+window.dayLogOverlayClick = function(e) { if (e.target === document.getElementById('dayLogOverlay')) closeDayLog(); };
+window.setDayLogWho = function(who) { dayLogWho = who; renderDayLog(); };
+
+window.copyDayLog = function(which, btn) {
+  if (!dayLog) return;
+  const text = which === 'day' ? dayText() : periodText(curPeriod(), dayLogWho);
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Copied!');
+    if (btn) { btn.style.borderColor = '#818cf8'; setTimeout(() => { btn.style.borderColor = ''; }, 400); }
+  }).catch(() => showToast('Copy failed'));
+};
+
+window.newPeriod = async function() {
+  if (!dayLog) return;
+  const p = curPeriod();
+  if (!confirm(`End Period ${p.n} and start Period ${p.n + 1}?`)) return;
+  p.end = new Date().toISOString();
+  if (analyzePeriod(p.n, 'mine').downCount) await saveHistoryEntry('period', periodText(p, 'mine'));
+  dayLog.periods.push({ n: p.n + 1, start: p.end, end: null });
+  dayLog.ghost = {};
+  saveDayLog();
+  rebuildAll(); renderShiftBar();
+  if (document.getElementById('dayLogOverlay').classList.contains('open')) renderDayLog();
+  showToast(`Period ${p.n + 1} started`);
+};
+
+window.newDay = async function() {
+  if (!stateLoaded) { showToast('Board not loaded — try again'); return; }
+  if (!confirm('Start a new day? The day total is saved to History, then the log is cleared and goes back to Period 1.')) return;
+  if (dayLog) {
+    const p = curPeriod();
+    p.end = new Date().toISOString();
+    if (analyzePeriod(p.n, 'mine').downCount) await saveHistoryEntry('period', periodText(p, 'mine'));
+    await saveHistoryEntry('day', dayText());
+  }
+  dayLog = freshDayLog();
+  saveDayLog();
+  rebuildAll(); renderShiftBar();
+  if (document.getElementById('dayLogOverlay').classList.contains('open')) renderDayLog();
+  showToast('New day started');
+};
+
+init();
+</script>
+</body>
+</html>
